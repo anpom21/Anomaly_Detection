@@ -19,3 +19,6 @@ Standard libraries:
 
 Dataset:
 - MVTec AD
+
+# Guides:
+- https://www.youtube.com/watch?v=MIxnMC0Zv0Y&list=PLoSULBSCtofdd9Lbp_6uDV0Vqet0afri5&ab_channel=IntelligentMachines
