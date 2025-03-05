@@ -8,14 +8,17 @@ You can follow this guide on how to set up a virtual environment in visual studi
 
 AI/Computer vision libraries:
 - Pytorch: https://pytorch.org/get-started/locally/
-  For windows: pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-- OpenCV: pip install opencv-python
-- Anomalib: pip install anomalib
+  For windows:  pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+- OpenCV:       pip install opencv-python
+- Anomalib:     pip install anomalib
 
 Standard libraries:
-- Numpy
-- PIL
-- matplotlib
+- numpy:      pip install numpy
+- PIL:        pip install pillow
+- matplotlib: pip install matplotlib
+- tqdm:       pip install tqdm
+- seaborn:    pip install seaborn
+- sklearn:    pip install scikit-learn
 
 Dataset:
 - MVTec AD
