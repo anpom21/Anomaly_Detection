@@ -137,6 +137,68 @@ def load_data():
 
     return train_loader, test_loader
 
+def load_np_data():
+    # load the list containing the four channel images
+    data = np.load('carpet/layered_images.npy')
+
+    # Load the list using the Imagefolder dataset class
+    for img in data:
+        #convert np.array to PIL image
+        print(img.shape)
+        img = Image.fromarray(img)
+        img = transform(img)
+    #good_dataset = ImageFolder(data, transform=transform)
+
+    # Access a sample from the dataset
+    # In this case, we're accessing the first sample
+    # x contains the preprocessed image data
+    # y contains the corresponding label (class index)
+    #x, y = good_dataset[0]
+
+    # Print the shape of the preprocessed image data (x) and its corresponding label (y)
+    #print("Image Shape:", x.shape)
+    #print("Label:", y)
+
+    # Split the dataset into training and testing subsets
+    # The `torch.utils.data.random_split` function randomly splits a dataset into non-overlapping subsets
+    # The first argument `good_dataset` is the dataset to be split
+    # The second argument `[0.8, 0.2]` specifies the sizes of the subsets. Here, 80% for training and 20% for testing.
+    #train_dataset, test_dataset = torch.utils.data.random_split(good_dataset, [0.8, 0.2])
+    train_dataset, test_dataset = torch.utils.data.random_split(data, [0.8, 0.2])
+    
+    # Print the lengths of the original dataset, training subset, and testing subset
+    #print("Total number of samples in the original dataset:", len(good_dataset))
+    #print("Number of samples in the training subset:", len(train_dataset))
+    #print("Number of samples in the testing subset:", len(test_dataset))
+
+    # Assuming train_dataset and test_dataset are PyTorch datasets containing image data and labels
+    # Set the batch size
+    BS = 16
+
+    # Create data loaders for training and testing datasets
+    train_loader = DataLoader(train_dataset, batch_size=BS, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=BS, shuffle=True)
+
+    # Get a batch of images and labels from the training loader
+    image_batch, label_batch = next(iter(train_loader))
+
+    # Print the shape of the input images and labels
+    print(f'Shape of input images: {image_batch.shape}')
+    print(f'Shape of labels: {label_batch.shape}')
+
+    # Set the figure size
+    plt.figure(figsize=(12*4, 48*4))
+
+    # Create a grid of images from the image batch and visualize it
+    grid = torchvision.utils.make_grid(image_batch[0:4], padding=5, nrow=4)
+    plt.imshow(grid.permute(1, 2, 0))  # Permute dimensions to (height, width, channels) for visualization
+    plt.title('Good Samples')  # Set the title of the plot
+    plt.show()  # Show the plot
+
+    return train_loader, test_loader
+
+
+
 
 # function to train the model
 def train_model(train_loader, test_loader):
@@ -311,7 +373,8 @@ def validate(train_loader, model):
 # main
 
 # Load dataset
-train_loader, test_loader = load_data()
+#train_loader, test_loader = load_data()
+train_loader, test_loader = load_np_data()
 # Train the model
 #train_model(train_loader, test_loader)
 
