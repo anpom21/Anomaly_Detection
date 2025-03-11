@@ -171,18 +171,19 @@ def load_np_data():
 
     # Assuming train_dataset and test_dataset are PyTorch datasets containing image data and labels
     # Set the batch size
-    BS = 16#16
+    BS = 5#16
 
     # Create data loaders for training and testing datasets
     train_loader = DataLoader(train_dataset, batch_size=BS, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=BS, shuffle=True)
 
     # Get a batch of images and labels from the training loader
-    image_batch, label_batch = next(iter(train_loader))
+    #image_batch, label_batch = next(iter(train_loader))
+    image_batch = next(iter(train_loader))
 
     # Print the shape of the input images and labels
     print(f'Shape of input images: {image_batch.shape}')
-    print(f'Shape of labels: {label_batch.shape}')
+    #print(f'Shape of labels: {label_batch.shape}')
 
     # Set the figure size
     plt.figure(figsize=(12*4, 48*4))
@@ -374,7 +375,7 @@ def validate(train_loader, model):
 #train_loader, test_loader = load_data()
 train_loader, test_loader = load_np_data()
 # Train the model
-#train_model(train_loader, test_loader)
+train_model(train_loader, test_loader)
 
 # Load the trained model
 model = Autoencoder()
