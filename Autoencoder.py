@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm.auto import tqdm
 import torchvision
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
 from torchsummary import summary
@@ -47,6 +47,17 @@ class Autoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
+# Create a custom dataset with images and empty labels
+class CustomDataset(Dataset):
+    def __init__(self, images, labels):
+        self.images = images
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        return self.images[idx], self.labels[idx]  # Return (image, empty list)
 
 # Define the transformation pipeline using torchvision.transforms.Compose
 transform = transforms.Compose([
@@ -155,17 +166,22 @@ def load_np_data():
         #img = Image.fromarray(img)
         img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
         img = transform_np(img)
-        print("img shape: ", img.shape)
+        print("img shape: ", img.shape, " ", img.dtype)
+
+    # Create dummy labels (empty lists)
+    labels = [[] for _ in range(len(data))]  # Each image gets an empty list as a label
+
+    dataset = CustomDataset(data, labels)
 
     # Split the dataset into training and testing subsets
     # The `torch.utils.data.random_split` function randomly splits a dataset into non-overlapping subsets
     # The first argument `good_dataset` is the dataset to be split
     # The second argument `[0.8, 0.2]` specifies the sizes of the subsets. Here, 80% for training and 20% for testing.
     #train_dataset, test_dataset = torch.utils.data.random_split(good_dataset, [0.75, 0.25])
-    train_dataset, test_dataset = torch.utils.data.random_split(data, [0.8, 0.2])
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [0.8, 0.2])
     
     # Print the lengths of the original dataset, training subset, and testing subset
-    print("Total number of samples in the original dataset:", len(data))
+    print("Total number of samples in the original dataset:", len(dataset))
     print("Number of samples in the training subset:", len(train_dataset))
     print("Number of samples in the testing subset:", len(test_dataset))
 
@@ -178,8 +194,8 @@ def load_np_data():
     test_loader = DataLoader(test_dataset, batch_size=BS, shuffle=True)
 
     # Get a batch of images and labels from the training loader
-    #image_batch, label_batch = next(iter(train_loader))
-    image_batch = next(iter(train_loader))
+    image_batch, label_batch = next(iter(train_loader))
+    #image_batch = next(iter(train_loader))
 
     # Print the shape of the input images and labels
     print(f'Shape of input images: {image_batch.shape}')
@@ -195,8 +211,6 @@ def load_np_data():
     plt.show()  # Show the plot
 
     return train_loader, test_loader
-
-
 
 
 # function to train the model
@@ -216,6 +230,7 @@ def train_model(train_loader, test_loader):
         model.train()  # Set model to training mode
         for img, _ in train_loader:
             img = img.cuda()
+            print("shape", img.shape)
             
             output = model(img)
             loss = criterion(output, img)
