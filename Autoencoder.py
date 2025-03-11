@@ -54,6 +54,11 @@ transform = transforms.Compose([
     transforms.ToTensor()          # Convert the image to a PyTorch tensor and divide by 255.0
 ])
 
+transform_np = transforms.Compose([
+    transforms.ToTensor(),          # Convert the image to a PyTorch tensor and divide by 255.0
+    transforms.Resize((224,224))  # Resize the image to 224x224 pixels 
+])
+
 # load the data and split it into training and testing sets
 def load_data():
     # Download and extract the MVTec AD dataset
@@ -141,39 +146,32 @@ def load_np_data():
     # load the list containing the four channel images
     data = np.load('carpet/layered_images.npy')
 
+    print("Data array shape: ", data.shape)
+    print("First element of data array: ", data[0].shape)
+
     # Load the list using the Imagefolder dataset class
     for img in data:
         #convert np.array to PIL image
-        print(img.shape)
-        img = Image.fromarray(img)
-        img = transform(img)
-    #good_dataset = ImageFolder(data, transform=transform)
-
-    # Access a sample from the dataset
-    # In this case, we're accessing the first sample
-    # x contains the preprocessed image data
-    # y contains the corresponding label (class index)
-    #x, y = good_dataset[0]
-
-    # Print the shape of the preprocessed image data (x) and its corresponding label (y)
-    #print("Image Shape:", x.shape)
-    #print("Label:", y)
+        #img = Image.fromarray(img)
+        img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
+        img = transform_np(img)
+        print("img shape: ", img.shape)
 
     # Split the dataset into training and testing subsets
     # The `torch.utils.data.random_split` function randomly splits a dataset into non-overlapping subsets
     # The first argument `good_dataset` is the dataset to be split
     # The second argument `[0.8, 0.2]` specifies the sizes of the subsets. Here, 80% for training and 20% for testing.
-    #train_dataset, test_dataset = torch.utils.data.random_split(good_dataset, [0.8, 0.2])
+    #train_dataset, test_dataset = torch.utils.data.random_split(good_dataset, [0.75, 0.25])
     train_dataset, test_dataset = torch.utils.data.random_split(data, [0.8, 0.2])
     
     # Print the lengths of the original dataset, training subset, and testing subset
-    #print("Total number of samples in the original dataset:", len(good_dataset))
-    #print("Number of samples in the training subset:", len(train_dataset))
-    #print("Number of samples in the testing subset:", len(test_dataset))
+    print("Total number of samples in the original dataset:", len(data))
+    print("Number of samples in the training subset:", len(train_dataset))
+    print("Number of samples in the testing subset:", len(test_dataset))
 
     # Assuming train_dataset and test_dataset are PyTorch datasets containing image data and labels
     # Set the batch size
-    BS = 16
+    BS = 16#16
 
     # Create data loaders for training and testing datasets
     train_loader = DataLoader(train_dataset, batch_size=BS, shuffle=True)
