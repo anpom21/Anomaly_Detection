@@ -57,7 +57,9 @@ class CustomDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, idx):
-        return self.images[idx], self.labels[idx]  # Return (image, empty list)
+        img = self.images[idx].astype(np.float32) / 255.0  # Ensure float32
+        return torch.tensor(img), self.labels[idx]
+        #return self.images[idx], self.labels[idx]  # Return (image, empty list)
 
 # Define the transformation pipeline using torchvision.transforms.Compose
 transform = transforms.Compose([
@@ -169,7 +171,7 @@ def load_np_data():
         print("img shape: ", img.shape, " ", img.dtype)
 
     # Create dummy labels (empty lists)
-    labels = [[] for _ in range(len(data))]  # Each image gets an empty list as a label
+    labels = [[0] for _ in range(len(data))]  # Each image gets an empty list as a label
 
     dataset = CustomDataset(data, labels)
 
@@ -200,6 +202,7 @@ def load_np_data():
     # Print the shape of the input images and labels
     print(f'Shape of input images: {image_batch.shape}')
     #print(f'Shape of labels: {label_batch.shape}')
+    #print(f'Labels: {label_batch}')
 
     # Set the figure size
     plt.figure(figsize=(12*4, 48*4))
@@ -230,7 +233,7 @@ def train_model(train_loader, test_loader):
         model.train()  # Set model to training mode
         for img, _ in train_loader:
             img = img.cuda()
-            print("shape", img.shape)
+            #print("shape", img.shape, " ", img.dtype)
             
             output = model(img)
             loss = criterion(output, img)
