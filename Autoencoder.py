@@ -155,9 +155,12 @@ def load_data():
 
     return train_loader, test_loader
 
-def load_np_data():
+def load_np_data(train = True):
     # load the list containing the four channel images
-    data = np.load('carpet/layered_images.npy')
+    if train:
+        data = np.load('carpet/layered_images.npy')
+    else:
+        data = np.load('carpet/test_layered_images.npy')
 
     print("Data array shape: ", data.shape)
     print("First element of data array: ", data[0].shape)
@@ -169,11 +172,16 @@ def load_np_data():
         img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
         img = transform_np(img)
         print("img shape: ", img.shape, " ", img.dtype)
-
+    
     # Create dummy labels (empty lists)
     labels = [[0] for _ in range(len(data))]  # Each image gets an empty list as a label
 
     dataset = CustomDataset(data, labels)
+
+    if train != True:
+        # load the first three images from the dataset into a tensor
+        test = torch.stack([dataset[0][0], dataset[1][0], dataset[2][0]])
+        return test
 
     # Split the dataset into training and testing subsets
     # The `torch.utils.data.random_split` function randomly splits a dataset into non-overlapping subsets
@@ -294,17 +302,20 @@ def validate(train_loader, model):
         ax[2, i].axis('OFF')
     plt.show()
 
-    test_image_1 = transform(Image.open(r'.\carpet\test\color\000.png'))
-    test_image_2 = transform(Image.open(r'.\carpet\test\cut\000.png'))
-    test_image_3 = transform(Image.open(r'.\carpet\test\hole\000.png'))
+    
+    #test_image_1 = transform(Image.open(r'.\carpet\test\color\000.png'))
+    #test_image_2 = transform(Image.open(r'.\carpet\test\cut\000.png'))
+    #test_image_3 = transform(Image.open(r'.\carpet\test\hole\000.png'))
 
-    data = torch.stack([test_image_1,test_image_2, test_image_3])
+    #data = torch.stack([test_image_1,test_image_2, test_image_3])
+    data = load_np_data(False)
 
     with torch.no_grad():
         data = data.cuda()
         recon = model(data)
         
     recon_error =  ((data-recon)**2).mean(axis=1)
+    print(recon_error.shape)
         
     plt.figure(dpi=250)
     fig, ax = plt.subplots(3, 3, figsize=(5*4, 4*4))
@@ -312,6 +323,15 @@ def validate(train_loader, model):
         ax[0, i].imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
         ax[1, i].imshow(recon[i].cpu().numpy().transpose((1, 2, 0)))
         ax[2, i].imshow(recon_error[i][0:-10,0:-10].cpu().numpy(), cmap='jet',vmax= torch.max(recon_error[i]))
+        #save the error image
+        error_array = recon_error[i][0:-10,0:-10].cpu().numpy()
+        # Normalize to [0,255] range for proper image saving
+        error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
+        error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
+        error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
+        error_img.save(f"error_{i}.png")
+        #recon_error_img = Image.fromarray(recon_error[i][0:-10,0:-10].cpu().numpy())
+        #recon_error_img.save(f"recon_error_{i}.png")
         ax[0, i].axis('OFF')
         ax[1, i].axis('OFF')
         ax[2, i].axis('OFF')
@@ -393,7 +413,7 @@ def validate(train_loader, model):
 #train_loader, test_loader = load_data()
 train_loader, test_loader = load_np_data()
 # Train the model
-train_model(train_loader, test_loader)
+#train_model(train_loader, test_loader)
 
 # Load the trained model
 model = Autoencoder()
