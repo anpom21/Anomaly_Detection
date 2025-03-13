@@ -113,14 +113,14 @@ def preview_layered_images(layered_images, amount=4):
 # ----------------------------- Preprocess images ---------------------------- #
 
 
-def preprocess_images(folder_path, n=4, width=256, height=256):
+def preprocess_images(folder_path, n=4, width=256, height=256, savefilename='layered_images'):
 
     try:
         images = load_images(folder_path)
         images = resize_images(images, width, height)
         images = greyscale_images(images)
         images = layer_images(images, n)
-        np.save('layered_images.npy', images)
+        np.save(savefilename + '.npy', images)
         print('Images saved succesfully:', images.shape)
         return images
     except Exception as e:
@@ -135,18 +135,27 @@ if __name__ == '__main__':
     # Test preprocessing functions
     # ------------------------- Input path to the dataset ------------------------ #
     path = 'Datasets\Dataset001\Train'
+    path2 = 'Datasets\Dataset001\Test'
 
     # ------------------------ Run preprocessing functions ----------------------- #
     images = preprocess_images(path)
+    images2 = preprocess_images(path2, savefilename='test_layered_images')
 
     # --------------------------- Save and load images --------------------------- #
-    np.save('layered_images.npy', images[0:4])
-    print('Images saved succesfully', images[0:4].shape)
+    #np.save('layered_images.npy', images[0:4])
+    #print('Images saved succesfully', images[0:4].shape)
+
+    #np.save('test_layered_images.npy', images2[0:4])
+    #print('Images saved succesfully', images2[0:4].shape)
 
     image_loaded = np.load('layered_images.npy')
     print('Loaded image shape:', image_loaded.shape)
+
+    image_loaded2 = np.load('test_layered_images.npy')
+    print('Loaded image shape:', image_loaded2.shape)
 
     # Preview
     print('Images saved succesfully')
 
     preview_layered_images(image_loaded)
+    preview_layered_images(image_loaded2)
