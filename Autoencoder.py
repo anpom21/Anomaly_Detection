@@ -405,6 +405,50 @@ def validate(train_loader, model):
     plt.show()
 
 
+# load test dataset
+def load_test():
+    data = np.load('carpet/test_layered_images.npy')
+
+    print("Data array shape: ", data.shape)
+    print("First element of data array: ", data[0].shape)
+
+    # Load the list using the Imagefolder dataset class
+    for img in data:
+        #convert np.array to PIL image
+        img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
+        img = transform_np(img)
+        print("img shape: ", img.shape, " ", img.dtype)
+    
+    # Create dummy labels (empty lists)
+    labels = [[0] for _ in range(len(data))]  # Each image gets an empty list as a label
+
+    dataset = CustomDataset(data, labels)
+
+    return dataset
+
+# process the test dataset
+def test(dataset, model):
+    #load images from the dataset
+    data = torch.stack([img for img, _ in dataset])
+
+    with torch.no_grad():
+        data = data.cuda()
+        recon = model(data)
+        
+    recon_error =  ((data-recon)**2).mean(axis=1)
+    print(recon_error.shape)
+        
+    for i in range(98):
+        #save the error image
+        error_array = recon_error[i][0:-10,0:-10].cpu().numpy()
+        # Normalize to [0,255] range for proper image saving
+        error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
+        error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
+        error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
+        error_img.save(f"test/error_{i}.png")
+        #recon_error_img = Image.fromarray(recon_error[i][0:-10,0:-10].cpu().numpy())
+        #recon_error_img.save(f"recon_error_{i}.png")
+        
 
 #---------------------------------------------------------------------------------------------------------------------
 # main
@@ -422,4 +466,6 @@ model.eval()
 model.cuda()
 
 # Validate the model
-validate(train_loader, model)
+#validate(train_loader, model)
+test_dataset = load_test()
+test(test_dataset, model)
