@@ -1,0 +1,4 @@
+numpy
+roboticstoolbox-python
+spatialmath-python
+ur-rtde

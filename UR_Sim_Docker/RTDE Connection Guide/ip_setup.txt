@@ -1,0 +1,3 @@
+
+sudo ip addr add 192.168.1.100/24 dev enp7s0
+sudo ip link set enp7s0 up

@@ -1,0 +1,3 @@
+Be careful how you write the report
+
+An architecture might not be bad, maybe the right hyper parameters is just not found yet
