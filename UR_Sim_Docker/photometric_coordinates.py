@@ -2,11 +2,32 @@ import math
 import rtde_control
 import rtde_receive
 import argparse
+import roboticstoolbox as rtb
 from mpl_toolkits.mplot3d import Axes3D
 from rtde_control import RTDEControlInterface
+# Recieve interface
+from rtde_receive import RTDEReceiveInterface
 import numpy as np
 from spatialmath import SO3
 import spatialmath as sm
+
+def move_to_start_configuration(robot_control, Q0=0, P0=0, axis_angle=0):
+    axis_angle = [2.467, -1.767, 0.633]
+    # Joint configurations
+    Q0 = np.array(
+        [
+            0.6743066906929016,
+            -1.3727410475360315,
+            -1.204346005116598,
+            4.2224321365356445,
+            1.159425139427185,
+            0.3307466506958008,
+        ]
+    )
+
+    input("Press enter to move to start configuration.")
+    robot_control.moveJ(Q0)
+    robot_control.moveL(P0.t.tolist() + axis_angle)
 
 #!/usr/bin/env python3
 
@@ -70,9 +91,48 @@ def position_to_pose(position, center):
     
     return pose 
     
+def transformation_matrix_to_pose(matrix):
+    """
+    Converts a 4x4 homogeneous transformation matrix to a 6D pose vector (position + axis-angle rotation).
+    Parameters:
+        matrix (np.array): 4x4 homogeneous transformation matrix
+    Returns:
+        np.array: 6D pose vector (x, y, z, rx, ry, rz)
+    """
+    position = matrix[:3, 3]
+    rotation_matrix = matrix[:3, :3]
+    axis_angle = rotation_matrix_to_axis_angle(rotation_matrix)
+    pose = np.concatenate([position, axis_angle])
     
+    return pose
 
-def move_robot_to_positions(positions, robot_ip, velocity=1.05, acceleration=1.4):
+def rotation_matrix_to_axis_angle(rotation_matrix):
+    """
+    Converts a 3x3 rotation matrix to an axis-angle rotation vector.
+    Parameters:
+        rotation_matrix (np.array): 3x3 rotation matrix
+    Returns:
+        np.array: Axis-angle rotation vector (rx, ry, rz)
+    """
+    assert np.allclose(np.dot(rotation_matrix, rotation_matrix.T), np.eye(3)), "Input is not a valid rotation matrix"
+    
+    angle = np.arccos((np.trace(rotation_matrix) - 1) / 2)
+    
+    if angle == 0:
+        return np.array([0, 0, 0])
+    elif angle == np.pi:
+        x = np.sqrt((rotation_matrix[0, 0] + 1) / 2)
+        y = np.sqrt((rotation_matrix[1, 1] + 1) / 2) * np.sign(rotation_matrix[0, 1])
+        z = np.sqrt((rotation_matrix[2, 2] + 1) / 2) * np.sign(rotation_matrix[0, 2])
+        return np.array([x, y, z]) * angle
+    else:
+        rx = rotation_matrix[2, 1] - rotation_matrix[1, 2]
+        ry = rotation_matrix[0, 2] - rotation_matrix[2, 0]
+        rz = rotation_matrix[1, 0] - rotation_matrix[0, 1]
+        axis = np.array([rx, ry, rz]) / (2 * np.sin(angle))
+        return axis * angle
+
+def move_robot_to_positions(poses, robot_ip, velocity=0.2, acceleration=1.4):
     """
     Send positions to UR5 robot and move to each position using moveJ.
     
@@ -84,6 +144,11 @@ def move_robot_to_positions(positions, robot_ip, velocity=1.05, acceleration=1.4
     """
     # Connect to the robot
     rtde_c = RTDEControlInterface(robot_ip)
+    # rtde_r = rtde_receive.RTDEReceiveInterface(robot_ip)
+    
+    # current_q = rtde_r.getActualQ()
+    
+    # print("Current joint positions:", current_q)
     
     # Check if the connection is established
     if not rtde_c.isConnected():
@@ -91,16 +156,40 @@ def move_robot_to_positions(positions, robot_ip, velocity=1.05, acceleration=1.4
         return False
     
     # Move to each position
-    for i, pos in enumerate(positions):
-        print(f"Moving to position {i+1}/{len(positions)}: {pos}")
+    for i, T in enumerate(poses):
+        print(f"Move to position {i+1}/{len(poses)}: {T}")
         
-        # Use moveJ to move to the position
-        success = rtde_c.moveJ(pos, velocity, acceleration)
         
-        if not success:
-            print(f"Failed to move to position {i+1}")
-            rtde_c.disconnect()
-            return False
+        # Wait for input before moving to the next position
+        input("Press enter to move to the next position")
+        
+        # Extract the position and orientation from the transformation matrix
+        position = T[:3, 3]
+        rotation_matrix = T[:3, :3]
+        P0 = sm.SE3(position)
+        move_to_start_configuration(rtde_c, P0 = P0)
+        
+        # # Convert to axis angle representation
+        # rotation_vector = transformation_matrix_to_pose(T)
+        
+        # # Combine position and rotation vector into a pose
+        # pose = np.concatenate((position, rotation_vector))
+        
+        # # Print current pose of the robot
+        # print("Current pose:", rtde_c.getActualTCPPose())
+
+        # # Perform inverse kinematics to get the joint positions
+        # joint_positions = rtde_c.getInverseKinematics(pose)
+
+        # print("Joint positions:", joint_positions)
+        
+        # # Use moveJ to move to the position
+        # success = rtde_c.moveJ(joint_positions)
+        
+        # if not success:
+        #     print(f"Failed to move to position {i+1}")
+        #     rtde_c.disconnect()
+        #     return False
     
     # Disconnect from the robot
     rtde_c.disconnect()
@@ -110,9 +199,9 @@ def move_robot_to_positions(positions, robot_ip, velocity=1.05, acceleration=1.4
 def main():
     
     # Parameters
-    center = [0, 0, 0.3]
+    center = [0.2, 0.2, 0.2] #0.3
     light_radius = 0.4
-    light_height = 0.25
+    light_height = 0.3
     n_light = 5
     
     # Calculate light positions
@@ -188,6 +277,18 @@ def main():
     ax.set_aspect('auto')
     ax.legend()
     plt.show()
+    
+    # Ask for confirmation before moving the robot
+    response = input("Do you want to send these positions to the robot? (y/n): ")
+    if response.lower() != 'y':
+        print("Operation cancelled")
+        return
+    
+    ip = "192.168.1.30"
+    
+    # Send positions to the robot
+    move_robot_to_positions(poses, ip)
+    
         
 
 

@@ -4,12 +4,25 @@ from spatialmath import SE3
 from rtde_control import RTDEControlInterface
 import time
 
+def move_to_start_configuration(robot_control, Q0, P0, axis_angle):
+    input("Press enter to move to start configuration.")
+    robot_control.moveJ(Q0)
+    robot_control.moveL(P0.t.tolist() + axis_angle)
 
 if __name__ == "__main__":
     # Initialize robot
     #ip = "172.17.0.2"  # TODO: Change this
     ip = "192.168.1.30"
     robot_control = RTDEControlInterface(ip)
+    # robot_receive = RTDEReceiveInterface(ip)
+    
+    # Get current joint configuration
+    # # Get current joint positions
+    # current_joint_positions = robot_control.getActualToolFlangePose()
+    # print("Current joint positions:", current_joint_positions)
+    
+    # # Get current Cartesian configuration
+    # T = robot_control.getActualTCPPose()
 
     # Parameters
     velocity = 0.5
@@ -73,9 +86,9 @@ if __name__ == "__main__":
     T_trap_1 = rtb.tools.trajectory.ctraj(P0, P1, t)
     T_trap_2 = rtb.tools.trajectory.ctraj(P1, P2, t)
 
-    input("Press enter to move to start configuration.")
-    robot_control.moveJ(Q0)
-    robot_control.moveL(P0.t.tolist() + axis_angle)
+    move_to_start_configuration(robot_control, Q0, P0, axis_angle)
+    
+    
 
     input("Press enter to start Cartesian-space trapezoidal velocity profile")
     for i in range(0, len(T_trap_1)):
