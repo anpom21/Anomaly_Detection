@@ -2,6 +2,7 @@ import numpy as np
 import roboticstoolbox as rtb
 from spatialmath import SE3
 from rtde_control import RTDEControlInterface
+from rtde_receive import RTDEReceiveInterface
 import time
 
 def move_to_start_configuration(robot_control, Q0, P0, axis_angle):
@@ -11,15 +12,21 @@ def move_to_start_configuration(robot_control, Q0, P0, axis_angle):
 
 if __name__ == "__main__":
     # Initialize robot
-    #ip = "172.17.0.2"  # TODO: Change this
-    ip = "192.168.1.30"
+    ip = "172.17.0.2"  # TODO: Change this
+    #ip = "192.168.1.30"
     robot_control = RTDEControlInterface(ip)
+    robot_receive = RTDEReceiveInterface(ip)
+    
     # robot_receive = RTDEReceiveInterface(ip)
     
     # Get current joint configuration
     # # Get current joint positions
-    # current_joint_positions = robot_control.getActualToolFlangePose()
-    # print("Current joint positions:", current_joint_positions)
+    current_joint_positions = robot_receive.getActualQ()
+    print("Current joint positions:", current_joint_positions)
+    
+    current_pose = robot_receive.getActualTCPPose()
+    print("Current pose:", current_pose)
+    print("Current pose (position):", current_pose[:3])
     
     # # Get current Cartesian configuration
     # T = robot_control.getActualTCPPose()
@@ -78,8 +85,8 @@ if __name__ == "__main__":
 
     # Time parameters
     # dt = 0.002
-    dt = 0.008
-    T = 2
+    dt = 0.002
+    T = 5
     t = np.arange(0, T, dt)
 
     # Cartesian space trapezoidal velocity
