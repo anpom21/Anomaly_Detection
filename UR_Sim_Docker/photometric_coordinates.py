@@ -1,7 +1,4 @@
 import math
-import rtde_control
-import rtde_receive
-import argparse
 import roboticstoolbox as rtb
 from mpl_toolkits.mplot3d import Axes3D
 from rtde_control import RTDEControlInterface
@@ -11,11 +8,7 @@ import numpy as np
 from spatialmath import SE3
 import spatialmath as sm
 import matplotlib.pyplot as plt
-import time
 from kinematic_functions import position_to_pose, pose_vector_to_se3, rotation_matrix_to_axis_angle, student_IK, move_to_start_configuration
-
-
-
 
 #!/usr/bin/env python3
 
@@ -54,6 +47,26 @@ def calculate_light_positions(n_light, center, height, distance):
     
     return positions
 
+def auto_home_position(robot_r, center):
+    """Automatically calculate the home position for the robot based on the center point.
+
+    Args:
+        robot_r (RTDE Recieve object): RTDE Recieve object for the robot
+        center (3 dim position): Position of the center point
+
+    Returns:
+        q_home: Home joint position for the robot
+    """
+    q = robot_r.getActualQ()
+    angle1 = np.arctan2(center[1],center[0]) + np.deg2rad(-165)
+    angle2 = np.arctan2(center[1],center[0]) + np.deg2rad(195)
+    angles = [ angle1, angle2]
+    min_index = np.argmin([np.abs(q[0] - angle1), np.abs(q[0] - angle2)])
+    center_angle = angles[min_index]
+    q_home = [center_angle, -np.pi/2, np.pi/2, -np.pi/2, -np.pi/2, 0.0]
+    
+    return q_home
+    
 def move_robot_to_positions(transformation_matrix, robot_ip, center, velocity=1.05, acceleration=1.4):
     """
     Send positions to UR5 robot and move to each position using moveJ.
@@ -67,22 +80,10 @@ def move_robot_to_positions(transformation_matrix, robot_ip, center, velocity=1.
     # Connect to the robot
     rtde_c = RTDEControlInterface(robot_ip)
     rtde_r = RTDEReceiveInterface(robot_ip)
-    
-    q = rtde_r.getActualQ() 
-    # print("Current joint positions:", q)
-    
-    print("Current pose:", rtde_r.getActualTCPPose())
 
-    
-    angle1 = np.arctan2(center[1],center[0]) + np.deg2rad(-165)
-    angle2 = np.arctan2(center[1],center[0]) + np.deg2rad(195)
-    angles = [ angle1, angle2]
-    min_index = np.argmin([np.abs(q[0] - angle1), np.abs(q[0] - angle2)])
-    center_angle = angles[min_index]
-    q_home = [center_angle, -np.pi/2, np.pi/2, -np.pi/2, -np.pi/2, 0.0]
+    custom_q_home = [-0.8106325308429163, -2.042311970387594, -1.8650391737567347, 5.403944969177246, 1.4234832525253296, -1.0592706839190882]
 
    
-    
     # Check if the connection is established
     if not rtde_c.isConnected():
         print("Failed to connect to the robot")
@@ -93,22 +94,12 @@ def move_robot_to_positions(transformation_matrix, robot_ip, center, velocity=1.
         print(f"Move to position {i+1}/{len(transformation_matrix)}: \n{T.t}")
         pose = list(T.t.tolist()) + list(rotation_matrix_to_axis_angle(T.R))
 
-        
         input("\nPress to home")
 
-        success = rtde_c.moveJ(q_home,speed = velocity, acceleration = acceleration)  
-        #print("Home position",rtde_r.getActualTCPPose()[:3])  
-        print("Base angle", rtde_r.getActualQ()[0]) 
-        home_base = rtde_r.getActualQ()[0] 
+        success = rtde_c.moveJ(custom_q_home,speed = velocity, acceleration = acceleration)  
 
         input("\nPress enter to move to the next position")
         success = rtde_c.moveJ_IK(pose,speed = velocity, acceleration = acceleration)
-        #print(f"{i} position",rtde_r.getActualTCPPose()[:3])  
-        print("Base angle", rtde_r.getActualQ()[0])  
-        #test= center + [0,0,0]
-        #rtde_c.moveJ_IK(test)
-        #print("Center",rtde_r.getActualTCPPose()[:3])
-        #print("Base angle", rtde_r.getActualQ()[0])
 
         
         #move_robot(rtde_c, rtde_r, T)
@@ -193,7 +184,7 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
         print(min_val)
         
         # Plot a cylinder
-        cyl_r = 0.15
+        cyl_r = 0.08
         z_cylinder = np.linspace(0, light_height, 100)
         theta_cylinder = np.linspace(0, 2 * np.pi, 100)
         theta_cylinder, z_cylinder = np.meshgrid(theta_cylinder, z_cylinder)
@@ -229,10 +220,10 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
 def main():
     
     # Parameters
-    center = [-0.2, -0.4, -0.1] #0.3
-    light_radius = 0.2
-    light_height = 0.16
-    n_light = 3
+    center = [0.379296019468532, -0.4164582402752736, -0.086414021169025] #0.3
+    light_radius = 0.3
+    light_height = 0.27
+    n_light = 4
     
     # Calculate light positions
     positions = calculate_light_positions(n_light, center, light_height, light_radius)
@@ -248,7 +239,7 @@ def main():
     #    print("Operation cancelled")
     #    return
     
-    ip = "172.17.0.2"
+    ip = "192.168.1.30"
     
     # Send positions to the robot
     move_robot_to_positions(T_light, ip,center)
