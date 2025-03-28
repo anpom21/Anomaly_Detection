@@ -340,7 +340,7 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
     print("Positions loaded from ", filename)
     print("Positions", robot_pos.positions)
     print("Number of positions: ", robot_pos.count)
-    print("Position labels: ", robot_pos.position_label)
+    print("Position labels: ", robot_pos.labels)
     print("Number of light positions: ", robot_pos.light_positions)
     print("Number of intermediate positions: ",
           robot_pos.intermediate_positions)
@@ -404,20 +404,20 @@ class robot_positions:
         self.light_positions = []
         self.intermediate_positions = []
         self.positions = []
-        self.position_label = []
+        self.labels = []
         self.count = 0
         self.object_position = object_position
 
     def add_light_position(self, position):
         self.light_positions.append(position)
         self.positions.append(position)
-        self.position_label.append("Light")
+        self.labels.append("Light")
         self.count += 1
 
     def add_intermediate_position(self, position):
         self.intermediate_positions.append(position)
         self.positions.append(position)
-        self.position_label.append("Intermediate")
+        self.labels.append("Intermediate")
         self.count += 1
 
     def clear(self):
@@ -435,7 +435,7 @@ def main():
     # Example usage:
 
     # Parameters
-    n_light = 6
+    n_light = 4
     center = [0.379296019468532, -
               0.4164582402752736, -0.086414021169025]  # 0.3
     light_radius = 0.2

@@ -8,7 +8,7 @@ import numpy as np
 from spatialmath import SE3
 import spatialmath as sm
 import matplotlib.pyplot as plt
-from photometric_positions import half_sphere_simple, position_to_pose, yaml_load_positions
+from photometric_positions import half_sphere_simple, position_to_pose, yaml_load_positions, robot_positions
 from Camera.capture_image import capture_image, save_image
 import pickle
 import cv2
@@ -69,8 +69,9 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
         print("Failed to connect to the robot")
         return False
 
-    T_poses = position_to_pose(
-        robot_positions.positions, robot_positions.object_position)
+    T_poses = []
+    for pos in robot_positions.positions:
+        T_poses.append(position_to_pose(pos, robot_positions.object_position))
 
     # Move to each position
     for i, T in enumerate(T_poses):
@@ -88,7 +89,7 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
         # Capture image
         if success and robot_positions.labels[i] == "Light":
             # Capture image
-            img = capture_image()
+            img = capture_image(sim=True)
             if img is None:
                 print("Failed to capture image")
                 return False
@@ -116,24 +117,24 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
 
 def trial_run(ur_control, robot_positions, velocity=0.2, acceleration=0.2):
 
-    pose_T = position_to_pose(
-        robot_positions.positions, robot_positions.object_position)
-
+    pose_T = []
+    for pos in robot_positions.positions:
+        pose_T.append(position_to_pose(pos, robot_positions.object_position))
     # Move to each position
     for i, T in enumerate(pose_T):
-        print(f"Move to position {i+1}/{len(pose_T)}: \n{T.t}")
+        print(f"[NEW] Next position: {i+1}/{len(pose_T)}: \n{T.t}")
         pose_AA = list(T.t.tolist()) + list(rotation_matrix_to_axis_angle(T.R))
 
         if robot_positions.labels[i] == "Light":
-            input("Press enter to move to the next light source")
+            input("[INFO] Press enter to move to the next light source")
         else:
-            input("Press enter to move to the next intermediate position")
+            input("[INFO] Press enter to move to the next intermediate position")
 
         success = ur_control.moveJ_IK(
             pose_AA, speed=velocity, acceleration=acceleration)
 
         if not success:
-            print(f"Failed to move to position {i+1}")
+            print(f"[ERROR] Failed to move to position {i+1}")
             ur_control.disconnect()
             return False
 
@@ -141,64 +142,73 @@ def trial_run(ur_control, robot_positions, velocity=0.2, acceleration=0.2):
 
 
 def main():
-    # Load positions
-    file = open("robot_pos.pkl", "rb")
+    # PARAMETERS
+    rob_pos_filename = "robot_position.pkl"
+    dataset_path = "irl_dataset/"
+
+    # ---- #
+    # Load the positions
+    file = open(rob_pos_filename, "rb")
     robot_positions = pickle.load(file)
     file.close()
-    print(robot_positions.positions)
-
-    # Convert positions to transformation matrices
-    T_list = position_to_pose(robot_positions.positions)
+    print("[INFO] Positions loaded successfully")
 
     # Connect to the robot
-    ip = "192.168.1.30"
+    # ip = "192.168.1.30"
+    ip = "localhost"
     ur_control = RTDEControlInterface(ip)
     ur_receive = RTDEReceiveInterface(ip)
 
     # Check if the connection is established
     if not ur_control.isConnected():
-        print("Failed to connect to the robot")
+        print("[ERROR] Failed to connect to the robot")
         return False
     else:
-        print("Connected to the robot")
+        print("[INFO] Connected to the robot")
 
     # Set the speed and acceleration
-    print("\nExecute trial run (speed 0.2 rad/s)?")
-    print("If fast speed is desired enter here (rad/s):")
+    print("\n[PROMPT] Execute trial run (speed 0.2 rad/s)?")
+    print("[PROMPT] If fast speed is desired enter here (rad/s):")
     speed = input(
-        "Otherwise press enter to continue or 'n' to skip trial run: ")
+        "[PROMPT] Otherwise press enter to continue or 'n' to skip trial run: ")
 
     if speed == "":
-        velocity = 0.2
+        velocity = 0.3
         acceleration = 0.2
     else:
         velocity = float(speed)
         acceleration = float(speed)
 
+    print(f"\n[INFO] Speed: {velocity} rad/s")
+    print(f"[INFO] Acceleration: {acceleration} rad/s^2\n")
+
     # Execute trial run
     if speed != "n":
         if trial_run(ur_control, robot_positions, velocity, acceleration):
-            print("Trial run completed successfully")
+            print("\n[INFO] Trial run completed successfully")
         else:
-            print("Failed to complete trial run")
+            print("\n[ERROR] Failed to complete trial run")
             ur_control.disconnect()
+            return False
 
     # Begin data collection
-    print("\nBegin data collection?")
-    n_its = input("Enter number of repetitions: ")
+    print("[PROMPT] Begin data collection?")
+    n_its = input("[PROMPT] Enter number of repetitions: ")
     n_its = int(n_its)
 
     # Set the speed and acceleration
-    velocity = 1.05
+    velocity = 1
     acceleration = 1.4
-    print(f"Speed: {velocity} rad/s")
-    print(f"Acceleration: {acceleration} rad/s^2")
+    print(f"[INFO] Speed: {velocity} rad/s")
+    print(f"[INFO]Acceleration: {acceleration} rad/s^2")
 
     # Collect data
     for i in range(n_its):
-        print(f"\nIteration {i+1}/{n_its}")
-        if not collect_sample(ur_control, robot_positions, ip, velocity, acceleration):
-            print("Failed to complete data collection")
+        print(f"\n[INFO] Iteration {i+1}/{n_its}")
+        success = collect_sample(
+            ur_control, robot_positions, dataset_path, velocity, acceleration)
+        if not success:
+            print("[INFO] Failed to complete data collection")
             ur_control.disconnect()
             return False
 

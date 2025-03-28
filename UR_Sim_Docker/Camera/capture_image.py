@@ -5,7 +5,7 @@ import os
 
 
 # ------------------------------- Capture Image ------------------------------ #
-def capture_image():
+def capture_image(sim=False):
     """
     Captures an image from the initialized camera and returns it as a numpy array.
 
@@ -22,7 +22,15 @@ def capture_image():
         cam_list.Clear()
         system.ReleaseInstance()
         # Throw error
-        raise Exception("No cameras detected!")
+        if not sim:
+            raise Exception("No cameras detected!")
+        else:
+            cap = cv2.VideoCapture(0)
+            cap.set(3, 640)
+            cap.set(4, 480)
+
+            _, image = cap.read()
+            return image
         return None
     cam = cam_list.GetByIndex(0)
     cam.Init()

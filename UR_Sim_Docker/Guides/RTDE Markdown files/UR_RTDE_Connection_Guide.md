@@ -10,7 +10,7 @@
 
 ---
 
-## 2. Check the Connection of Your PC
+## 2. Check the Connection of Your PC (Ubuntu)
 Run the following command to check your network interfaces:
 
 ```bash
@@ -90,7 +90,7 @@ Run:
 
 ```bash
 nc 192.168.1.X 29999
-robotmode
+robotmode'
 ```
 
 Expected output: The **robot mode** based on its current state.
