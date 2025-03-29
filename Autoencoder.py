@@ -457,7 +457,7 @@ def test(dataset, model):
 #train_loader, test_loader = load_data()
 train_loader, test_loader = load_np_data()
 # Train the model
-#train_model(train_loader, test_loader)
+train_model(train_loader, test_loader)
 
 # Load the trained model
 model = Autoencoder()

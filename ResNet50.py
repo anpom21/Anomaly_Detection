@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import Autoencoder
+from Autoencoder import load_np_data
 
 # ----------------------------------------------------------------- ResNet Architecture -----------------------------------------------------------------
 
@@ -214,7 +214,7 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
 
 # ----------------------------------------------------------------- Main -----------------------------------------------------------------
 #Load dataset
-train_loader, test_loader = Autoencoder.load_np_data()
+train_loader, test_loader = load_np_data()
 
 #load model
 model = ResNet50(num_classes=2, channels=4)
