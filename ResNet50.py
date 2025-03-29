@@ -1,7 +1,84 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from Autoencoder import load_np_data
+#from Autoencoder import load_np_data
+import tqdm
+from pathlib import Path
+import numpy as np
+import os, shutil
+import matplotlib.pyplot as plt
+from PIL import Image
+from tqdm.auto import tqdm
+import torchvision
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+from torchvision.transforms import transforms
+from torchsummary import summary
+from torch.utils.data.dataset import Subset
+import urllib.request
+import tarfile
+from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, ConfusionMatrixDisplay, f1_score
+import seaborn as sns
+
+#------------------------------------------------------------------ Load Data ------------------------------------------------------------------
+transform_np = transforms.Compose([
+    transforms.ToTensor(),          # Convert the image to a PyTorch tensor and divide by 255.0
+    transforms.Resize((224,224))  # Resize the image to 224x224 pixels 
+])
+
+def load_np_data():
+    # load the list containing the four channel images
+    data = np.load('carpet/layered_images.npy')
+
+    print("Data array shape: ", data.shape)
+    print("First element of data array: ", data[0].shape)
+
+    # Load the list using the Imagefolder dataset class
+    for img in data:
+        #convert np.array to PIL image
+        #img = Image.fromarray(img)
+        img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
+        img = transform_np(img)
+        #print("img shape: ", img.shape)
+
+    # Split the dataset into training and testing subsets
+    # The `torch.utils.data.random_split` function randomly splits a dataset into non-overlapping subsets
+    # The first argument `good_dataset` is the dataset to be split
+    # The second argument `[0.8, 0.2]` specifies the sizes of the subsets. Here, 80% for training and 20% for testing.
+    #train_dataset, test_dataset = torch.utils.data.random_split(good_dataset, [0.75, 0.25])
+    train_dataset, test_dataset = torch.utils.data.random_split(data, [0.8, 0.2])
+    
+    # Print the lengths of the original dataset, training subset, and testing subset
+    print("Total number of samples in the original dataset:", len(data))
+    print("Number of samples in the training subset:", len(train_dataset))
+    print("Number of samples in the testing subset:", len(test_dataset))
+
+    # Assuming train_dataset and test_dataset are PyTorch datasets containing image data and labels
+    # Set the batch size
+    BS = 5#16
+
+    # Create data loaders for training and testing datasets
+    train_loader = DataLoader(train_dataset, batch_size=BS, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=BS, shuffle=True)
+
+    # Get a batch of images and labels from the training loader
+    #image_batch, label_batch = next(iter(train_loader))
+    image_batch = next(iter(train_loader))
+
+    # Print the shape of the input images and labels
+    print(f'Shape of input images: {image_batch.shape}')
+    #print(f'Shape of labels: {label_batch.shape}')
+
+    # Set the figure size
+    plt.figure(figsize=(12*4, 48*4))
+
+    # Create a grid of images from the image batch and visualize it
+    grid = torchvision.utils.make_grid(image_batch[0:4], padding=5, nrow=4)
+    plt.imshow(grid.permute(1, 2, 0))  # Permute dimensions to (height, width, channels) for visualization
+    plt.title('Good Samples')  # Set the title of the plot
+    plt.show()  # Show the plot
+
+    return train_loader, test_loader
 
 # ----------------------------------------------------------------- ResNet Architecture -----------------------------------------------------------------
 
@@ -133,6 +210,50 @@ def ResNet101(num_classes, channels=3):
 def ResNet152(num_classes, channels=3):
     return ResNet(Bottleneck, [3,8,36,3], num_classes, channels)
 
+#------------------------------------------------------------------ ResNet Autoencoder ------------------------------------------------------------------
+
+class ResNetAutoencoder(nn.Module):
+    def __init__(self, channels=4):
+        super(ResNetAutoencoder, self).__init__()
+
+        # Use your custom ResNet50 as encoder (but remove fc & avgpool)
+        self.encoder = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=1, num_channels=channels)
+        
+        # Remove classification head
+        self.encoder.avgpool = nn.Identity()
+        self.encoder.fc = nn.Identity()
+
+        # Decoder: Upsample back to original resolution
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(2048, 1024, kernel_size=2, stride=2),  # 8x8 -> 16x16
+            nn.ReLU(),
+            nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2),   # 16 -> 32
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),    # 32 -> 64
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),    # 64 -> 128
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),     # 128 -> 256
+            nn.ReLU(),
+            nn.Conv2d(64, channels, kernel_size=3, padding=1),        # Output = 4 channels
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        # Only go through encoder layers, not the fc/avgpool
+        x = self.encoder.relu(self.encoder.batch_norm1(self.encoder.conv1(x)))
+        x = self.encoder.max_pool(x)
+
+        x = self.encoder.layer1(x)
+        x = self.encoder.layer2(x)
+        x = self.encoder.layer3(x)
+        x = self.encoder.layer4(x)
+
+        # Decoder
+        x = self.decoder(x)
+        return x
+
+
 # ---------------------------------------------------------------- Train ----------------------------------------------------------------
 
 #Patience = number of epochs before stopping
@@ -140,10 +261,10 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()  # Reconstruction loss for autoencoders
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    best_acc = 0.0
+    best_loss = float('inf')
     epochs_without_improvement = 0
 
     for epoch in range(num_epochs):
@@ -152,51 +273,52 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
         # === Training ===
         model.train()
         running_loss = 0.0
-        correct = 0
         total = 0
 
-        for images, labels in train_loader:
-            images, labels = images.to(device), labels.to(device)
+        for images in train_loader:
+            if isinstance(images, (list, tuple)):
+                images = images[0]  # In case it's a tuple like (images, dummy_label)
+
+            images = images.to(device).float()
 
             optimizer.zero_grad()
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            print(f"Input shape: {images.shape}")
+            print(f"Output shape: {outputs.shape}")
+
+            loss = criterion(outputs, images)  # reconstruct input
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item() * images.size(0)
-            _, preds = torch.max(outputs, 1)
-            correct += (preds == labels).sum().item()
-            total += labels.size(0)
+            total += images.size(0)
 
         train_loss = running_loss / total
-        train_acc = correct / total
-        print(f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}")
+        print(f"Train Loss: {train_loss:.4f}")
 
         # === Validation ===
         model.eval()
         val_loss = 0.0
-        val_correct = 0
         val_total = 0
 
         with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(device), labels.to(device)
+            for images in val_loader:
+                if isinstance(images, (list, tuple)):
+                    images = images[0]
+
+                images = images.to(device).float()
                 outputs = model(images)
-                loss = criterion(outputs, labels)
+                loss = criterion(outputs, images)
 
                 val_loss += loss.item() * images.size(0)
-                _, preds = torch.max(outputs, 1)
-                val_correct += (preds == labels).sum().item()
-                val_total += labels.size(0)
+                val_total += images.size(0)
 
         val_loss /= val_total
-        val_acc = val_correct / val_total
-        print(f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+        print(f"Val Loss: {val_loss:.4f}")
 
         # === Check for improvement ===
-        if val_acc > best_acc:
-            best_acc = val_acc
+        if val_loss < best_loss:
+            best_loss = val_loss
             epochs_without_improvement = 0
             torch.save(model.state_dict(), save_path)
             print(f"✅ New best model saved at epoch {epoch+1}")
@@ -206,10 +328,11 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
 
         # === Early stopping ===
         if epochs_without_improvement >= patience:
-            print(f"\n⏹️ Early stopping triggered after {epoch+1} epochs. Best Val Acc: {best_acc:.4f}")
+            print(f"\n⏹️ Early stopping triggered after {epoch+1} epochs. Best Val Loss: {best_loss:.4f}")
             break
 
-    print(f"\n🎯 Training complete. Best validation accuracy: {best_acc:.4f}")
+    print(f"\n🎯 Training complete. Best validation loss: {best_loss:.4f}")
+
 
 
 # ----------------------------------------------------------------- Main -----------------------------------------------------------------
