@@ -30,3 +30,4 @@ Dataset:
 - Auteencoder
 - Simplenet
 - Patchcore
+![paper_tree](https://github.com/user-attachments/assets/f280c43a-8696-4e87-a5ec-ed9d796e3dbf)
