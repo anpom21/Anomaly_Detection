@@ -253,6 +253,102 @@ class ResNetAutoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
+#------------------------------------------------------------------- ResNet Feature Extractor -------------------------------------------------------------------
+# Copilots suggestion
+class ResNetFeatureExtractor(nn.Module):
+    def __init__(self, channels=4):
+        super(ResNetFeatureExtractor, self).__init__()
+
+        # Use your custom ResNet50 as encoder (but remove fc & avgpool)
+        self.encoder = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=1, num_channels=channels)
+        
+        # Remove classification head
+        self.encoder.avgpool = nn.Identity()
+        self.encoder.fc = nn.Identity()
+
+    def forward(self, x):
+        # Only go through encoder layers, not the fc/avgpool
+        x = self.encoder.relu(self.encoder.batch_norm1(self.encoder.conv1(x)))
+        x = self.encoder.max_pool(x)
+
+        x = self.encoder.layer1(x)
+        x = self.encoder.layer2(x)
+        x = self.encoder.layer3(x)
+        x = self.encoder.layer4(x)
+
+        return x
+
+# Implementation 
+class ResNet2(nn.Module):
+    def __init__(self, ResBlock, layer_list, num_classes, num_channels=3, extract_features=False):
+        super(ResNet2, self).__init__()
+        self.extract_features = extract_features
+        self.in_channels = 64
+        
+        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.batch_norm1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU()
+        self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = self._make_layer(ResBlock, layer_list[0], planes=64)
+        self.layer2 = self._make_layer(ResBlock, layer_list[1], planes=128, stride=2)
+        self.layer3 = self._make_layer(ResBlock, layer_list[2], planes=256, stride=2)
+        self.layer4 = self._make_layer(ResBlock, layer_list[3], planes=512, stride=2)
+
+        if self.extract_features:
+            self.avgpool = nn.Identity()
+            self.fc = nn.Identity()
+        else:
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+            self.fc = nn.Linear(512 * ResBlock.expansion, num_classes)
+
+    def forward(self, x):
+        x = self.relu(self.batch_norm1(self.conv1(x)))
+        x = self.max_pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        if not self.extract_features:
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+        return x
+
+def ResNet50_2(num_classes, channels=3):
+    return ResNet2(Bottleneck, [3,4,6,3], num_classes, channels)
+
+class CustomResNetFeatureExtractor(nn.Module):
+    def __init__(self, model):
+        super(CustomResNetFeatureExtractor, self).__init__()
+        self.model = model
+        self.model.eval()
+
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        self.features = []
+
+        def hook(module, input, output):
+            self.features.append(output)
+
+        self.model.layer2[-1].register_forward_hook(hook)
+        self.model.layer3[-1].register_forward_hook(hook)
+
+        self.avg = nn.AvgPool2d(3, stride=1)
+        self.resize = nn.AdaptiveAvgPool2d((28, 28))  # match expected shape
+
+    def forward(self, x):
+        self.features = []
+        with torch.no_grad():
+            _ = self.model(x)
+
+        resized_maps = [self.resize(self.avg(fmap)) for fmap in self.features]
+        patch = torch.cat(resized_maps, 1)
+        return patch
+
 
 # ---------------------------------------------------------------- Train ----------------------------------------------------------------
 
