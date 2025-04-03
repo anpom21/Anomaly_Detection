@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm.auto import tqdm
 import torchvision
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
 from torchsummary import summary
@@ -349,6 +349,45 @@ class CustomResNetFeatureExtractor(nn.Module):
         patch = torch.cat(resized_maps, 1)
         return patch
 
+class FeatCAE(nn.Module):
+    """Autoencoder."""
+
+    def __init__(self, in_channels=1000, latent_dim=50, is_bn=True):
+        super(FeatCAE, self).__init__()
+
+        layers = []
+        layers += [nn.Conv2d(in_channels, (in_channels + 2 * latent_dim) // 2, kernel_size=1, stride=1, padding=0)]
+        if is_bn:
+            layers += [nn.BatchNorm2d(num_features=(in_channels + 2 * latent_dim) // 2)]
+        layers += [nn.ReLU()]
+        layers += [nn.Conv2d((in_channels + 2 * latent_dim) // 2, 2 * latent_dim, kernel_size=1, stride=1, padding=0)]
+        if is_bn:
+            layers += [nn.BatchNorm2d(num_features=2 * latent_dim)]
+        layers += [nn.ReLU()]
+        layers += [nn.Conv2d(2 * latent_dim, latent_dim, kernel_size=1, stride=1, padding=0)]
+
+        self.encoder = nn.Sequential(*layers)
+
+        # if 1x1 conv to reconstruct the rgb values, we try to learn a linear combination
+        # of the features for rgb
+        layers = []
+        layers += [nn.Conv2d(latent_dim, 2 * latent_dim, kernel_size=1, stride=1, padding=0)]
+        if is_bn:
+            layers += [nn.BatchNorm2d(num_features=2 * latent_dim)]
+        layers += [nn.ReLU()]
+        layers += [nn.Conv2d(2 * latent_dim, (in_channels + 2 * latent_dim) // 2, kernel_size=1, stride=1, padding=0)]
+        if is_bn:
+            layers += [nn.BatchNorm2d(num_features=(in_channels + 2 * latent_dim) // 2)]
+        layers += [nn.ReLU()]
+        layers += [nn.Conv2d((in_channels + 2 * latent_dim) // 2, in_channels, kernel_size=1, stride=1, padding=0)]
+        # layers += [nn.ReLU()]
+
+        self.decoder = nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
 # ---------------------------------------------------------------- Train ----------------------------------------------------------------
 
@@ -363,7 +402,7 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
     best_loss = float('inf')
     epochs_without_improvement = 0
 
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
 
         # === Training ===
@@ -430,13 +469,215 @@ def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_p
     print(f"\n🎯 Training complete. Best validation loss: {best_loss:.4f}")
 
 
+def train_model(model, feature_extractor, train_loader, val_loader, num_epochs=20, lr=0.001, save_path='best_model.pth', patience=5):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    feature_extractor = feature_extractor.to(device)
+
+    # Enable training on both
+    for param in feature_extractor.parameters():
+        param.requires_grad = True
+
+    # MSE loss for reconstruction in feature space
+    criterion = nn.MSELoss()
+
+    # Optimizer for both models
+    optimizer = optim.Adam(
+        list(model.parameters()) + list(feature_extractor.model.parameters()),  # <-- use .model if it's wrapped
+        lr=lr
+    )
+
+    best_loss = float('inf')
+    epochs_without_improvement = 0
+
+    for epoch in tqdm(range(num_epochs)):
+        print(f"\nEpoch {epoch + 1}/{num_epochs}")
+
+        # === Training ===
+        model.train()
+        feature_extractor.train()
+        running_loss = 0.0
+        total = 0
+
+        for images in train_loader:
+            if isinstance(images, (list, tuple)):
+                images = images[0]
+            images = images.to(device).float()
+
+            # Forward through feature extractor (no torch.no_grad!)
+            features = feature_extractor(images)
+            outputs = model(features)
+
+            loss = criterion(outputs, features)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * images.size(0)
+            total += images.size(0)
+
+        train_loss = running_loss / total
+        print(f"Train Loss: {train_loss:.4f}")
+
+        # === Validation ===
+        model.eval()
+        feature_extractor.eval()
+        val_loss = 0.0
+        val_total = 0
+
+        with torch.no_grad():
+            for images in val_loader:
+                if isinstance(images, (list, tuple)):
+                    images = images[0]
+                images = images.to(device).float()
+
+                features = feature_extractor(images)
+                outputs = model(features)
+
+                loss = criterion(outputs, features)
+
+                val_loss += loss.item() * images.size(0)
+                val_total += images.size(0)
+
+        val_loss /= val_total
+        print(f"Val Loss: {val_loss:.4f}")
+
+        # === Save best model ===
+        if val_loss < best_loss:
+            best_loss = val_loss
+            epochs_without_improvement = 0
+            torch.save({
+                'featcae_state_dict': model.state_dict(),
+                'resnet_state_dict': feature_extractor.model.state_dict()
+            }, save_path)
+            print(f"✅ New best model saved at epoch {epoch+1}")
+    #    else:
+    #        epochs_without_improvement += 1
+    #        print(f"⚠️ No improvement for {epochs_without_improvement} epoch(s)")
+
+    #    if epochs_without_improvement >= patience:
+    #        print(f"\n⏹️ Early stopping triggered after {epoch+1} epochs. Best Val Loss: {best_loss:.4f}")
+    #        break
+
+    print(f"\n🎯 Training complete. Best validation loss: {best_loss:.4f}")
+
+
+#------------------------------------------------------------------ Test ------------------------------------------------------------------
+
+# Create a custom dataset with images and empty labels
+class CustomDataset(Dataset):
+    def __init__(self, images, labels):
+        self.images = images
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        img = self.images[idx].astype(np.float32) / 255.0  # Ensure float32
+        return torch.tensor(img), self.labels[idx]
+        #return self.images[idx], self.labels[idx]  # Return (image, empty list)
+
+
+# load test dataset
+def load_test():
+    data = np.load('carpet/test_layered_images.npy')
+
+    print("Data array shape: ", data.shape)
+    print("First element of data array: ", data[0].shape)
+
+    # Load the list using the Imagefolder dataset class
+    for img in data:
+        #convert np.array to PIL image
+        img = np.moveaxis(img, 0, -1)  # Convert (C, H, W) -> (H, W, C)
+        img = transform_np(img)
+        print("img shape: ", img.shape, " ", img.dtype)
+    
+    # Create dummy labels (empty lists)
+    labels = [[0] for _ in range(len(data))]  # Each image gets an empty list as a label
+
+    dataset = CustomDataset(data, labels)
+
+    return dataset
+
+# process the test dataset
+def test(dataset, model):
+    #load images from the dataset
+    data = torch.stack([img for img, _ in dataset])
+
+    with torch.no_grad():
+        data = data.cuda()
+        recon = model(data)
+        
+    recon_error =  ((data-recon)**2).mean(axis=1)
+    print(recon_error.shape)
+        
+    for i in range(98):
+        #save the error image
+        error_array = recon_error[i][0:-10,0:-10].cpu().numpy()
+        # Normalize to [0,255] range for proper image saving
+        error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
+        error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
+        error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
+        error_img.save(f"test/error_{i}.png")
+        #recon_error_img = Image.fromarray(recon_error[i][0:-10,0:-10].cpu().numpy())
+        #recon_error_img.save(f"recon_error_{i}.png")
+       
+def test(dataset, model, feature_extractor):
+    #load images from the dataset
+    data = torch.stack([img for img, _ in dataset])
+
+    with torch.no_grad():
+        data = data.cuda()
+        features = feature_extractor(data)
+        recon = model(features)
+        
+    recon_error =  ((features-recon)**2).mean(axis=1)
+    print(recon_error.shape)
+        
+    for i in range(98):
+        #save the error image
+        error_array = recon_error[i][0:-10,0:-10].cpu().numpy()
+        # Normalize to [0,255] range for proper image saving
+        error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
+        error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
+        error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
+        #error_img.save(f"test/error_{i}.png")
+        #Display the error image
+        plt.imshow(error_array, cmap='gray')
+        plt.title(f"Error Image {i}")
+        plt.axis('off')
+        plt.show()
 
 # ----------------------------------------------------------------- Main -----------------------------------------------------------------
 #Load dataset
 train_loader, test_loader = load_np_data()
 
 #load model
-model = ResNet50(num_classes=2, channels=4)
+#model = ResNet50(num_classes=2, channels=4)
+
+# Instantiate your custom ResNet (as a feature extractor)
+custom_resnet = ResNet50(num_classes=10, channels=4)  # or 3 if RGB
+custom_resnet.extract_features = True  # disable classifier
+feature_extractor = CustomResNetFeatureExtractor(custom_resnet).cuda()
+
+# Feature autoencoder
+model = FeatCAE(in_channels=1536, latent_dim=100).cuda()
+
+
+# Optionally: fine-tune ResNet too
+# optimizer = torch.optim.Adam(list(model.parameters()) + list(custom_resnet.parameters()), lr=0.001)
+
 
 #Train model
-train_model(model, train_loader, test_loader, num_epochs=50, lr=0.001, save_path='best_model.pth', patience=5)
+#train_model(model, train_loader, test_loader, num_epochs=50, lr=0.001, save_path='best_model.pth', patience=5)
+#train_model(model, feature_extractor, train_loader, test_loader, num_epochs=1000, lr=0.001, save_path='OldDataResNet50AutoEnc.pth', patience=500)
+
+# Load trained model
+checkpoint = torch.load('OldDataResNet50AutoEnc.pth')
+model.load_state_dict(checkpoint['featcae_state_dict'])
+feature_extractor.model.load_state_dict(checkpoint['resnet_state_dict'])
+
+test_dataset = load_test()
+test(test_dataset, model, feature_extractor)
