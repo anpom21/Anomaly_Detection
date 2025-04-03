@@ -134,12 +134,12 @@ if __name__ == '__main__':
 
     # Test preprocessing functions
     # ------------------------- Input path to the dataset ------------------------ #
-    path = 'Datasets\Dataset001\Train'
-    path2 = 'Datasets\Dataset001\Test'
+    path = 'Datasets\Dataset002\Train'
+    path2 = 'Datasets\Dataset002\Test'
 
     # ------------------------ Run preprocessing functions ----------------------- #
-    images = preprocess_images(path)
-    images2 = preprocess_images(path2, savefilename='test_layered_images')
+    images = preprocess_images(path,  savefilename='layered_images2')
+    images2 = preprocess_images(path2, savefilename='test_layered_images2')
 
     # --------------------------- Save and load images --------------------------- #
     #np.save('layered_images.npy', images[0:4])
@@ -148,10 +148,10 @@ if __name__ == '__main__':
     #np.save('test_layered_images.npy', images2[0:4])
     #print('Images saved succesfully', images2[0:4].shape)
 
-    image_loaded = np.load('layered_images.npy')
+    image_loaded = np.load('layered_images2.npy')
     print('Loaded image shape:', image_loaded.shape)
 
-    image_loaded2 = np.load('test_layered_images.npy')
+    image_loaded2 = np.load('test_layered_images2.npy')
     print('Loaded image shape:', image_loaded2.shape)
 
     # Preview
