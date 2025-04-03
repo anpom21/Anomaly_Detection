@@ -158,9 +158,9 @@ def load_data():
 def load_np_data(train = True):
     # load the list containing the four channel images
     if train:
-        data = np.load('carpet/layered_images.npy')
+        data = np.load('carpet/layered_images2.npy')
     else:
-        data = np.load('carpet/test_layered_images.npy')
+        data = np.load('carpet/test_layered_images2.npy')
 
     print("Data array shape: ", data.shape)
     print("First element of data array: ", data[0].shape)
@@ -277,7 +277,7 @@ def train_model(train_loader, test_loader):
     plt.show()
 
     # Save the model
-    torch.save(model.state_dict(), 'simple_autoencoder_l2_loss.pth')
+    torch.save(model.state_dict(), 'simple_autoencoder2_l2_loss.pth')
     model.eval()
 
 
@@ -407,7 +407,7 @@ def validate(train_loader, model):
 
 # load test dataset
 def load_test():
-    data = np.load('carpet/test_layered_images.npy')
+    data = np.load('carpet/test_layered_images2.npy')
 
     print("Data array shape: ", data.shape)
     print("First element of data array: ", data[0].shape)
@@ -446,8 +446,17 @@ def test(dataset, model):
         error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
         error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
         error_img.save(f"test/error_{i}.png")
-        #recon_error_img = Image.fromarray(recon_error[i][0:-10,0:-10].cpu().numpy())
-        #recon_error_img.save(f"recon_error_{i}.png")
+        #Display the error image and the original image
+        #plt.figure(figsize=(10, 5))
+        #plt.subplot(1, 2, 1)
+        #plt.imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
+        #plt.title(f'Original Image {i}')
+        #plt.axis('off')
+        #plt.subplot(1, 2, 2)
+        #plt.imshow(error_img, cmap='jet')
+        #plt.title(f'Error Image {i}')
+        #plt.axis('off')
+        #plt.show()
         
 
 #---------------------------------------------------------------------------------------------------------------------
@@ -457,11 +466,11 @@ def test(dataset, model):
 #train_loader, test_loader = load_data()
 train_loader, test_loader = load_np_data()
 # Train the model
-train_model(train_loader, test_loader)
+#train_model(train_loader, test_loader)
 
 # Load the trained model
 model = Autoencoder()
-model.load_state_dict(torch.load('simple_autoencoder_l2_loss.pth'))
+model.load_state_dict(torch.load('simple_autoencoder2_l2_loss.pth'))
 model.eval()
 model.cuda()
 
