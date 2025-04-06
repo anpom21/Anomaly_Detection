@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision.transforms.functional
 import tqdm
 from pathlib import Path
 import numpy as np
@@ -47,6 +48,130 @@ class Autoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
+class NarrowerAutoencoder(nn.Module):
+    def __init__(self):
+        super(NarrowerAutoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(4, 64, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(64, 128, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(128, 128, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(128, 128, kernel_size=4, stride=2, output_padding=1 ),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+class DeeperAutoencoder(nn.Module):
+    def __init__(self):
+        super(DeeperAutoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(4, 128, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(128, 256, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(256, 512, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(512, 512, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 512, kernel_size=4, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=5, stride=2, output_padding=1 ),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        #print("encoder output shape: ", x.shape)
+        x = self.decoder(x)
+        #print("decoder output shape: ", x.shape)
+        return x
+
+class WiderAutoencoder(nn.Module):
+    def __init__(self):
+        super(WiderAutoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(4, 256, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(256, 512, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(512, 512, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 512, kernel_size=4, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, output_padding=1 ),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+class DeeperWiderAutoencoder(nn.Module):
+    def __init__(self):
+        super(DeeperWiderAutoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(4, 256, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(256, 512, kernel_size=4),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(512, 1024, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(1024, 1024, kernel_size=3),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(1024, 1024, kernel_size=4, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, output_padding=1 ),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
 # Create a custom dataset with images and empty labels
 class CustomDataset(Dataset):
     def __init__(self, images, labels):
@@ -69,7 +194,8 @@ transform = transforms.Compose([
 
 transform_np = transforms.Compose([
     transforms.ToTensor(),          # Convert the image to a PyTorch tensor and divide by 255.0
-    transforms.Resize((224,224))  # Resize the image to 224x224 pixels 
+    transforms.Resize((224,224)),   # Resize the image to 224x224 pixels
+    transforms.GaussianBlur(kernel_size=5, sigma=2.0) # Select the first 4 channels
 ])
 
 # load the data and split it into training and testing sets
@@ -225,9 +351,9 @@ def load_np_data(train = True):
 
 
 # function to train the model
-def train_model(train_loader, test_loader):
-    model = Autoencoder() 
-    model.cuda()# Move the model to the GPU
+def train_model(model, train_loader, test_loader, save_path='simple_autoencoder2_l2_loss.pth'):
+    #model = Autoencoder() 
+    #model.cuda()# Move the model to the GPU
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr= 0.001)
 
@@ -242,6 +368,9 @@ def train_model(train_loader, test_loader):
         for img, _ in train_loader:
             img = img.cuda()
             #print("shape", img.shape, " ", img.dtype)
+
+            # smooth the image using Gaussian filter
+            #img = torchvision.transforms.functional.gaussian_blur(img, kernel_size=3, sigma=(0.1, 2.0))
             
             output = model(img)
             loss = criterion(output, img)
@@ -277,7 +406,8 @@ def train_model(train_loader, test_loader):
     plt.show()
 
     # Save the model
-    torch.save(model.state_dict(), 'simple_autoencoder2_l2_loss.pth')
+    #torch.save(model.state_dict(), 'simple_autoencoder2_l2_loss.pth')
+    torch.save(model.state_dict(), save_path)
     model.eval()
 
 
@@ -445,19 +575,155 @@ def test(dataset, model):
         error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
         error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
         error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
-        error_img.save(f"test/error_{i}.png")
+        error_img.save(f"test6/error_{i}.png")
+        if(i % 10 == 0):
+            print(f"max error in image {i}: ", torch.max(recon_error[i]))
         #Display the error image and the original image
-        #plt.figure(figsize=(10, 5))
-        #plt.subplot(1, 2, 1)
-        #plt.imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
-        #plt.title(f'Original Image {i}')
-        #plt.axis('off')
-        #plt.subplot(1, 2, 2)
-        #plt.imshow(error_img, cmap='jet')
-        #plt.title(f'Error Image {i}')
-        #plt.axis('off')
-        #plt.show()
+        # plt.figure(figsize=(10, 5))
+        # plt.subplot(1, 3, 1)
+        # plt.imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
+        # plt.title(f'Original Image {i}')
+        # plt.axis('off')
+        # plt.subplot(1, 3, 2)
+        # plt.imshow(recon[i].cpu().numpy().transpose((1, 2, 0)))
+        # plt.title(f'Reconstructed Image {i}')
+        # plt.axis('off')
+        # plt.subplot(1, 3, 3)
+        # plt.imshow(error_img, cmap='jet')
+        # plt.title(f'Error Image {i}')
+        # plt.axis('off')
+        # plt.show()
         
+#------------------------------------------------------ ResNet Autoencoder --------------------------------------------------
+
+class Bottleneck(nn.Module):
+    expansion = 4
+    
+    def __init__(self, in_channels, out_channels, i_downsample=None, stride=1):
+        super(Bottleneck, self).__init__()
+        
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0)
+        self.batch_norm1 = nn.BatchNorm2d(out_channels)
+        
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        self.batch_norm2 = nn.BatchNorm2d(out_channels)
+        
+        self.conv3 = nn.Conv2d(out_channels, out_channels*self.expansion, kernel_size=1, stride=1, padding=0)
+        self.batch_norm3 = nn.BatchNorm2d(out_channels*self.expansion)
+        
+        self.i_downsample = i_downsample
+        self.stride = stride
+        self.relu = nn.ReLU()
+        
+    def forward(self, x):
+        identity = x.clone()
+        x = self.relu(self.batch_norm1(self.conv1(x)))
+        
+        x = self.relu(self.batch_norm2(self.conv2(x)))
+        
+        x = self.conv3(x)
+        x = self.batch_norm3(x)
+        
+        #downsample if needed
+        if self.i_downsample is not None:
+            identity = self.i_downsample(identity)
+        #add identity
+        x+=identity
+        x=self.relu(x)
+        
+        return x
+    
+class ResNet(nn.Module):
+    def __init__(self, ResBlock, layer_list, num_classes, num_channels=3):
+        super(ResNet, self).__init__()
+        self.in_channels = 64
+        
+        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.batch_norm1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU()
+        self.max_pool = nn.MaxPool2d(kernel_size = 3, stride=2, padding=1)
+        
+        self.layer1 = self._make_layer(ResBlock, layer_list[0], planes=64)
+        self.layer2 = self._make_layer(ResBlock, layer_list[1], planes=128, stride=2)
+        self.layer3 = self._make_layer(ResBlock, layer_list[2], planes=256, stride=2)
+        self.layer4 = self._make_layer(ResBlock, layer_list[3], planes=512, stride=2)
+        
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        self.fc = nn.Linear(512*ResBlock.expansion, num_classes)
+        
+    def forward(self, x):
+        x = self.relu(self.batch_norm1(self.conv1(x)))
+        x = self.max_pool(x)
+
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        
+        x = self.avgpool(x)
+        x = x.reshape(x.shape[0], -1)
+        x = self.fc(x)
+        
+        return x
+        
+    def _make_layer(self, ResBlock, blocks, planes, stride=1):
+        ii_downsample = None
+        layers = []
+        
+        if stride != 1 or self.in_channels != planes*ResBlock.expansion:
+            ii_downsample = nn.Sequential(
+                nn.Conv2d(self.in_channels, planes*ResBlock.expansion, kernel_size=1, stride=stride),
+                nn.BatchNorm2d(planes*ResBlock.expansion)
+            )
+            
+        layers.append(ResBlock(self.in_channels, planes, i_downsample=ii_downsample, stride=stride))
+        self.in_channels = planes*ResBlock.expansion
+        
+        for i in range(blocks-1):
+            layers.append(ResBlock(self.in_channels, planes))
+            
+        return nn.Sequential(*layers)
+
+class ResNetAutoencoder(nn.Module):
+    def __init__(self, channels=4):
+        super(ResNetAutoencoder, self).__init__()
+
+        # Use your custom ResNet50 as encoder (but remove fc & avgpool)
+        self.encoder = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=1, num_channels=channels)
+        
+        # Remove classification head
+        self.encoder.avgpool = nn.Identity()
+        self.encoder.fc = nn.Identity()
+
+        # Decoder: Upsample back to original resolution
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(2048, 1024, kernel_size=2, stride=2),  # 8x8 -> 16x16
+            nn.ReLU(),
+            nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2),   # 16 -> 32
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2),    # 32 -> 64
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2),    # 64 -> 128
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2),     # 128 -> 256
+            nn.ReLU(),
+            nn.Conv2d(64, channels, kernel_size=3, padding=1),        # Output = 4 channels
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        # Only go through encoder layers, not the fc/avgpool
+        x = self.encoder.relu(self.encoder.batch_norm1(self.encoder.conv1(x)))
+        x = self.encoder.max_pool(x)
+
+        x = self.encoder.layer1(x)
+        x = self.encoder.layer2(x)
+        x = self.encoder.layer3(x)
+        x = self.encoder.layer4(x)
+
+        # Decoder
+        x = self.decoder(x)
+        return x
 
 #---------------------------------------------------------------------------------------------------------------------
 # main
@@ -465,12 +731,40 @@ def test(dataset, model):
 # Load dataset
 #train_loader, test_loader = load_data()
 train_loader, test_loader = load_np_data()
+
+#Initialize the model
+#model = Autoencoder()
+#model = DeeperAutoencoder()
+#model = WiderAutoencoder()
+#model = DeeperWiderAutoencoder()
+#model = NarrowerAutoencoder()
+model = ResNetAutoencoder(channels=4)
+model.cuda() # Move the model to the GPU
+
 # Train the model
-#train_model(train_loader, test_loader)
+#train_model(model, train_loader, test_loader, save_path='Simple_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='Deeper_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='Wider_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='DeeperWider_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='Narrower_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='Simple_autoencoder_with_smoothing.pth')
+#train_model(model, train_loader, test_loader, save_path='ResNet_autoencoder.pth')
 
 # Load the trained model
 model = Autoencoder()
-model.load_state_dict(torch.load('simple_autoencoder2_l2_loss.pth'))
+#model = DeeperAutoencoder()
+#model = WiderAutoencoder()
+#model = DeeperWiderAutoencoder()
+#model = NarrowerAutoencoder()
+#model = ResNetAutoencoder(channels=4)
+
+#model.load_state_dict(torch.load('Simple_autoencoder.pth'))
+#model.load_state_dict(torch.load('Deeper_autoencoder.pth'))
+#model.load_state_dict(torch.load('Wider_autoencoder.pth'))
+#model.load_state_dict(torch.load('DeeperWider_autoencoder.pth'))
+#model.load_state_dict(torch.load('Narrower_autoencoder.pth'))
+model.load_state_dict(torch.load('Simple_autoencoder_with_smoothing.pth'))
+#model.load_state_dict(torch.load('ResNet_autoencoder.pth'))
 model.eval()
 model.cuda()
 
