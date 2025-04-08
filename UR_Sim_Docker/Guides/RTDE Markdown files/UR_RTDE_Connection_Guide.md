@@ -1,4 +1,4 @@
-# Setting Up RTDE with a UR Robot on Ubuntu
+# Setting Up RTDE with a UR Robot on Ubuntu or Windows
 
 ## 1. Find the IP Address of the UR Robot
 - Navigate to **Setup Robot** on the UR controller.
@@ -10,12 +10,14 @@
 
 ---
 
-## 2. Check the Connection of Your PC (Ubuntu)
-Run the following command to check your network interfaces:
+## 2. Check the Connection of Your PC 
 
+Run the following command to check your network interfaces:
+### Ubuntu
 ```bash
 ip a
 ```
+
 
 Look for your **Ethernet connection**. It may look something like this:
 ![alt text](image-2.png)
@@ -27,24 +29,50 @@ Look for your **Ethernet connection**. It may look something like this:
 - **Ensure that no IP address is assigned** to this connection (i.e., no `inet 192.168.x.x` entry).
 - **Note the Ethernet ID** (e.g., `enp7s0`).
 
+### Windows
+```bash
+ipconfig
+```
+Look for your **Ethernet connection**. It may look something like this:
+![alt text](image-8.png)
+```bash
+Ethernet adapter Ethernet:
+
+   Connection-specific DNS Suffix  . :
+   Link-local IPv6 Address . . . . . : fe80::9014:d806:72ba:ecdb%16
+   Autoconfiguration IPv4 Address. . : 169.254.80.131
+   Subnet Mask . . . . . . . . . . . : 255.255.0.0
+   Default Gateway . . . . . . . . . :
+```
+- You should look for the network saying "Ethernet"
+- As you can see it has an "Autoconfiguration IPv4 Address", this is not we want, we want a static IPv4 Address.
+
+
 ---
 
 ## 3. Set Up the IP Address of Your PC
 Assign a static IP to your Ethernet interface and bring it up:
-
+### Ubuntu
 ```bash
 sudo ip addr add 192.168.1.X/24 dev <ethernet_id>
 sudo ip link set <ethernet_id> up
 ```
 
-### Example:
+#### Example:
 ```bash
 sudo ip addr add 192.168.1.104/24 dev enp7s0
 sudo ip link set enp7s0 up
 ```
 
 - If the commands run successfully, **there will be no output**.
+### Windows
 
+Example:
+
+
+```bash
+netsh interface ipv4 set address name="Ethernet" static 192.168.1.100 255.255.255.0 192.168.1.1
+```
 ---
 
 ## 4. Verify That the IP Address Has Changed

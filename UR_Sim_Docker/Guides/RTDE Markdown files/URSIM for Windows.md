@@ -32,20 +32,33 @@ docker pull universalrobots/ursim_e-series
 
 This command downloads the URSim simulator image.
 
-## 4. Run the URSim Container with GUI Forwarding
+## 4. Start Docker Desktop
+Run ```docker desktop start``` in powershell.
+```bash
+docker desktop start
+```
+
+## 5. Start docker dekstop and run the URSim Container with GUI Forwarding
 
 Since Windows doesn’t support Linux’s `--net=host`, you need to manually map the display. Assuming VcXsrv is set to listen on display 0, run:
 
 ```bash
-docker run --rm -e DISPLAY=host.docker.internal:0 universalrobots/ursim_e-series
+& "$env:ProgramFiles\VcXsrv\vcxsrv.exe" :0 -multiwindow -clipboard -wgl -ac # Runs # X server
+docker desktop start; # Starts docker desktop
+docker run --rm `
+  -e DISPLAY=host.docker.internal:0 ` # Sets the GUI to run 
+   # on the XLaunch client window 0
+  -p 30001-30004:30001-30004 ` # Sets up ports
+  -p 29999:29999 ` # Sets up ports
+  universalrobots/ursim_e-series # Runs UR Sim and opens ports for UR RTDE
 ```
 
 This command tells the container where to send its GUI.
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 - **No GUI Display?**  
-  - Make sure VcXsrv is running and accepting connections.
+  - Make sure VcXsrv is running and accepting connections. If not, open **XLaunch**.
   - Check that your firewall isn't blocking the connection.
   - Verify that the display number (`0`) matches your VcXsrv configuration.
 

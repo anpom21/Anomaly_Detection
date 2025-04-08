@@ -5,7 +5,7 @@ import os
 
 
 # ------------------------------- Capture Image ------------------------------ #
-def capture_image(sim=False):
+def capture_image(system, sim=False):
     """
     Captures an image from the initialized camera and returns it as a numpy array.
 
@@ -13,7 +13,7 @@ def capture_image(sim=False):
     :return: Image as numpy array or None if failed.
     """
     # Initialize camera
-    system = PySpin.System.GetInstance()
+
     cam_list = system.GetCameras()
 
     # Check if camera is found
@@ -32,6 +32,8 @@ def capture_image(sim=False):
             _, image = cap.read()
             return image
         return None
+    else:
+        print(f"{cam_list.GetSize()} camera(s) detected.")
     cam = cam_list.GetByIndex(0)
     cam.Init()
     cam.BeginAcquisition()
@@ -45,6 +47,7 @@ def capture_image(sim=False):
 
     image_data = image_result.GetNDArray()
     image_result.Release()
+    print("Image captured successfully, shape:", image_data.shape)
 
     cam.EndAcquisition()
     return image_data
@@ -69,24 +72,36 @@ def save_image(image, filename, path):
 
 def main():
     print("Initializing camera...")
+    system = PySpin.System.GetInstance()
+    image = capture_image(system)
+
+    print(image)
 
     # print("Camera initialized:", camera)
     cap = cv2.VideoCapture(0)
     cap.set(3, 640)
     cap.set(4, 480)
+    # Make cv2 window
+    cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("Image", 640, 480)
     while True:
         print("Acquiring image...")
         try:
-            image = capture_image()
+            image = capture_image(system)
         except:
 
             print("Camera initialized")
             _, image = cap.read()
 
         cv2.imshow("Image", image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord("q"):
+            break
+    cv2.destroyAllWindows()
+    cap.release()
 
+
+"""
         # Save image
         n_channels = 2
         path = "irl_dataset/"
@@ -103,6 +118,7 @@ def main():
         print("Imaged saved at: ", path)
         if image is not None:
             print("Image captured successfully, shape:", image.shape)
+            """
 
 
 if __name__ == "__main__":

@@ -13,42 +13,37 @@ from Camera.capture_image import capture_image, save_image
 import pickle
 import cv2
 import os
+import PySpin
 #!/usr/bin/env python3
 
 # ----------------------- Rotation matrix to Axis Angle ---------------------- #
 
 
-def rotation_matrix_to_axis_angle(rotation_matrix):
+def rotation_matrix_to_axis_angle(R):
     """
-    Converts a 3x3 rotation matrix to an axis-angle rotation vector.
-    Parameters:
-        rotation_matrix (np.array): 3x3 rotation matrix
-    Returns:
-        axis angle (np.array): Axis-angle rotation vector (rx, ry, rz)
+    Convert rotation matrix to axis-angle (rx, ry, rz).
     """
-    assert np.allclose(np.dot(rotation_matrix, rotation_matrix.T), np.eye(
-        3)), "Input is not a valid rotation matrix"
+    assert np.allclose(np.dot(R, R.T), np.eye(
+        3), atol=1e-6), "Invalid rotation matrix"
 
-    angle = np.arccos((np.trace(rotation_matrix) - 1) / 2)
+    angle = np.arccos((np.trace(R) - 1) / 2)
 
-    if angle == 0:
-        return np.array([0, 0, 0])
-    elif angle == np.pi:
-        x = np.sqrt((rotation_matrix[0, 0] + 1) / 2)
-        y = np.sqrt((rotation_matrix[1, 1] + 1) /
-                    2) * np.sign(rotation_matrix[0, 1])
-        z = np.sqrt((rotation_matrix[2, 2] + 1) /
-                    2) * np.sign(rotation_matrix[0, 2])
-        return np.array([x, y, z]) * angle
+    if np.isclose(angle, 0):
+        return np.array([0.0, 0.0, 0.0])
+    elif np.isclose(angle, np.pi):
+        eigvals, eigvecs = np.linalg.eig(R)
+        axis = eigvecs[:, np.isclose(eigvals, 1.0)].flatten().real
+        axis = axis / np.linalg.norm(axis)
+        return axis * angle
     else:
-        rx = rotation_matrix[2, 1] - rotation_matrix[1, 2]
-        ry = rotation_matrix[0, 2] - rotation_matrix[2, 0]
-        rz = rotation_matrix[1, 0] - rotation_matrix[0, 1]
+        rx = R[2, 1] - R[1, 2]
+        ry = R[0, 2] - R[2, 0]
+        rz = R[1, 0] - R[0, 1]
         axis = np.array([rx, ry, rz]) / (2 * np.sin(angle))
         return axis * angle
 
 
-def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleration=1.4):
+def collect_sample(ur_control, camera_system, robot_positions, path, velocity=1.05, acceleration=1.4):
     """
     Move to the specified positions and collect data for each light source position.
 
@@ -76,9 +71,12 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
     # Move to each position
     for i, T in enumerate(T_poses):
         # Print the current position
-        print(f"Move to position {i+1}/{len(T_poses)}: \n{T.t}")
+        print(f"Move to position {i+1}/{len(T_poses)}: \n{T.t} \n {T.R}")
+        # Move to the position
         AA_pose = list(T.t.tolist()) + \
             list(rotation_matrix_to_axis_angle(T.R))
+
+        print(f"Axis angle: {AA_pose}")
 
         # Move to the position
         success = ur_control.moveJ_IK(
@@ -89,9 +87,10 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
         # Capture image
         if success and robot_positions.labels[i] == "Light":
             # Capture image
-            img = capture_image(sim=True)
+
+            img = capture_image(camera_system)
             if img is None:
-                print("Failed to capture image")
+                print("[ERROR] Failed to capture image")
                 return False
 
             # Image filenmae
@@ -110,7 +109,6 @@ def collect_sample(ur_control, robot_positions, path, velocity=1.05, acceleratio
             return False
 
     # Disconnect from the robot
-    ur_control.disconnect()
     print("Movement completed successfully")
     return True
 
@@ -122,9 +120,11 @@ def trial_run(ur_control, robot_positions, velocity=0.2, acceleration=0.2):
         pose_T.append(position_to_pose(pos, robot_positions.object_position))
     # Move to each position
     for i, T in enumerate(pose_T):
-        print(f"[NEW] Next position: {i+1}/{len(pose_T)}: \n{T.t}")
+        print(f"[NEW] Next position: {i+1}/{len(pose_T)}: \n{T.t}\n {T.R}")
         pose_AA = list(T.t.tolist()) + list(rotation_matrix_to_axis_angle(T.R))
+        print(f"[INFO] Axis angle: {pose_AA}")
 
+        # Move to the position
         if robot_positions.labels[i] == "Light":
             input("[INFO] Press enter to move to the next light source")
         else:
@@ -154,8 +154,8 @@ def main():
     print("[INFO] Positions loaded successfully")
 
     # Connect to the robot
-    # ip = "192.168.1.30"
-    ip = "localhost"
+    ip = "192.168.1.30"
+    # ip = "localhost"
     ur_control = RTDEControlInterface(ip)
     ur_receive = RTDEReceiveInterface(ip)
 
@@ -191,10 +191,14 @@ def main():
             ur_control.disconnect()
             return False
 
-    # Begin data collection
+    # Begin data collection1
     print("[PROMPT] Begin data collection?")
     n_its = input("[PROMPT] Enter number of repetitions: ")
-    n_its = int(n_its)
+    try:
+        n_its = int(n_its)
+    except ValueError:
+        print("[ERROR] Invalid input, using default value of 1")
+        n_its = 1
 
     # Set the speed and acceleration
     velocity = 1
@@ -202,15 +206,20 @@ def main():
     print(f"[INFO] Speed: {velocity} rad/s")
     print(f"[INFO]Acceleration: {acceleration} rad/s^2")
 
+    camera_system = PySpin.System.GetInstance()
+
     # Collect data
     for i in range(n_its):
         print(f"\n[INFO] Iteration {i+1}/{n_its}")
         success = collect_sample(
-            ur_control, robot_positions, dataset_path, velocity, acceleration)
+            ur_control, camera_system, robot_positions, dataset_path, velocity, acceleration)
         if not success:
             print("[INFO] Failed to complete data collection")
             ur_control.disconnect()
             return False
+    ur_control.disconnect()
+    camera_system.ReleaseInstance()
+    print("[INFO] Data collection completed successfully")
 
 
 if __name__ == "__main__":
