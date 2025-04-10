@@ -143,29 +143,54 @@ class DeeperWiderAutoencoder(nn.Module):
     def __init__(self):
         super(DeeperWiderAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(4, 256, kernel_size=3),
+            nn.Conv2d(4, 256, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(256, 512, kernel_size=3),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 256 -> 128
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(512, 1024, kernel_size=3),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 128 -> 64
+            nn.Conv2d(512, 1024, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(1024, 1024, kernel_size=3),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 64 -> 32
+            nn.Conv2d(1024, 1024, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # 32 -> 16
         )
+        # Use matching padding settings in the decoder so that the upsampling works as expected.
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(1024, 1024, kernel_size=3, stride=2, output_padding=1),
+            nn.ConvTranspose2d(1024, 1024, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, output_padding=1),
+            nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, output_padding=1 ),
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(256, 4, kernel_size=3, stride=2, output_padding=1),
+            nn.ConvTranspose2d(256, 4, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.Sigmoid()
         )
+        # self.encoder = nn.Sequential(
+        #     nn.Conv2d(4, 256, kernel_size=3),
+        #     nn.ReLU(),
+        #     nn.AvgPool2d(kernel_size=2, stride=2),
+        #     nn.Conv2d(256, 512, kernel_size=3),
+        #     nn.ReLU(),
+        #     nn.AvgPool2d(kernel_size=2, stride=2),
+        #     nn.Conv2d(512, 1024, kernel_size=3),
+        #     nn.ReLU(),
+        #     nn.AvgPool2d(kernel_size=2, stride=2),
+        #     nn.Conv2d(1024, 1024, kernel_size=3),
+        #     nn.ReLU(),
+        #     nn.AvgPool2d(kernel_size=2, stride=2),
+        # )
+        # self.decoder = nn.Sequential(
+        #     nn.ConvTranspose2d(1024, 1024, kernel_size=3, stride=2, output_padding=1),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, output_padding=1),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, output_padding=1 ),
+        #     nn.ReLU(),
+        #     nn.ConvTranspose2d(256, 4, kernel_size=3, stride=2, output_padding=1),
+        #     nn.Sigmoid()
+        # )
 
     def forward(self, x):
         x = self.encoder(x)
@@ -578,21 +603,23 @@ def test(dataset, model):
         error_img.save(f"DeeperWider/error_{i}.png")
         if(i % 10 == 0):
             print(f"max error in image {i}: ", torch.max(recon_error[i]))
-        #Display the error image and the original image
-        # plt.figure(figsize=(10, 5))
-        # plt.subplot(1, 3, 1)
-        # plt.imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
-        # plt.title(f'Original Image {i}')
-        # plt.axis('off')
-        # plt.subplot(1, 3, 2)
-        # plt.imshow(recon[i].cpu().numpy().transpose((1, 2, 0)))
-        # plt.title(f'Reconstructed Image {i}')
-        # plt.axis('off')
-        # plt.subplot(1, 3, 3)
-        # plt.imshow(error_img, cmap='jet')
-        # plt.title(f'Error Image {i}')
-        # plt.axis('off')
-        # plt.show()
+            #Threshold the error image to only show score above 0.01
+            error_img = np.where(recon_error[i][0:-10,0:-10].cpu().numpy() > 0.01, recon_error[i][0:-10,0:-10].cpu().numpy(), 0)
+            #Display the error image and the original image
+            plt.figure(figsize=(10, 5))
+            plt.subplot(1, 3, 1)
+            plt.imshow(data[i].cpu().numpy().transpose((1, 2, 0)))
+            plt.title(f'Original Image {i}')
+            plt.axis('off')
+            plt.subplot(1, 3, 2)
+            plt.imshow(recon[i].cpu().numpy().transpose((1, 2, 0)))
+            plt.title(f'Reconstructed Image {i}')
+            plt.axis('off')
+            plt.subplot(1, 3, 3)
+            plt.imshow(error_img, cmap='jet')
+            plt.title(f'Error Image {i}')
+            plt.axis('off')
+            plt.show()
         
 #------------------------------------------------------ ResNet Autoencoder --------------------------------------------------
 
@@ -745,7 +772,7 @@ model.cuda() # Move the model to the GPU
 #train_model(model, train_loader, test_loader, save_path='Simple_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Deeper_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Wider_autoencoder.pth')
-train_model(model, train_loader, test_loader, save_path='DeeperWider_autoencoder.pth')
+#train_model(model, train_loader, test_loader, save_path='DeeperWider_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Narrower_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Simple_autoencoder_with_smoothing.pth')
 #train_model(model, train_loader, test_loader, save_path='ResNet_autoencoder.pth')
