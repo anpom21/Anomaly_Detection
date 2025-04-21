@@ -130,11 +130,12 @@ def preprocess_images(folder_path, n=4, width=256, height=256, savefilename='lay
 # ---------------------------------------------------------------------------- #
 
 
+
 if __name__ == '__main__':
 
     # Test preprocessing functions
     # ------------------------- Input path to the dataset ------------------------ #
-    path = 'Datasets\Dataset002\Train'
+    path = 'Datasets\Dataset003\Train'
     path2 = 'Datasets\Dataset002\Test'
 
     # ------------------------ Run preprocessing functions ----------------------- #
