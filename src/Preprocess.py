@@ -103,7 +103,8 @@ class Preprocess:
 
         print('Images shape:', images.shape)
 
-        np.save(savefilename + '.npy', images)
+        
+        return images
     
     def process_flat_images(self, savefilename:str) -> None:
         """
@@ -113,7 +114,7 @@ class Preprocess:
         images = self.greyscale_images(images)
         print('Loaded images shape:', np.array(images).shape)
 
-        np.save(savefilename + '.npy', images)
+        
         return images
         
         
@@ -121,4 +122,9 @@ if __name__ == '__main__':
     preprocess = Preprocess(path='Datasets\Dataset003\Train', n_lights=24, width=224, height=224, top_light=True)
     
     # images = preprocess.process_images('Datasets\Dataset003\Train24Lights', n_images=24)
-    images = preprocess.process_flat_images('Datasets\Dataset003\TrainTopLight')
+    # np.save('Datasets\Dataset003\Train24Lights' + '.npy', images)
+    # images = preprocess.process_flat_images('Datasets\Dataset003\TrainTopLight')
+    # np.save('Datasets\Dataset003\TrainTopLight' + '.npy', images)
+
+    # for i in range(1,25):
+    #     print(preprocess.select_image_indexes(i))
