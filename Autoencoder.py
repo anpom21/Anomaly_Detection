@@ -143,10 +143,10 @@ class DeeperWiderAutoencoder(nn.Module):
     def __init__(self):
         super(DeeperWiderAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(4, 256, kernel_size=4),
+            nn.Conv2d(4, 256, kernel_size=3),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(256, 512, kernel_size=4),
+            nn.Conv2d(256, 512, kernel_size=3),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
             nn.Conv2d(512, 1024, kernel_size=3),
@@ -157,13 +157,13 @@ class DeeperWiderAutoencoder(nn.Module):
             nn.AvgPool2d(kernel_size=2, stride=2),
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(1024, 1024, kernel_size=4, stride=2, output_padding=1),
+            nn.ConvTranspose2d(1024, 1024, kernel_size=3, stride=2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(1024, 512, kernel_size=4, stride=2, output_padding=1),
+            nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(512, 256, kernel_size=5, stride=2, output_padding=1 ),
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, output_padding=1 ),
             nn.ReLU(),
-            nn.ConvTranspose2d(256, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.ConvTranspose2d(256, 4, kernel_size=3, stride=2, output_padding=1),
             nn.Sigmoid()
         )
 
@@ -575,7 +575,7 @@ def test(dataset, model):
         error_array = (error_array - error_array.min()) / (error_array.max() - error_array.min())  # Normalize to [0,1]
         error_array = (error_array * 255).astype(np.uint8)  # Scale to [0,255] and convert to uint8
         error_img = Image.fromarray(error_array, mode="L")  # Convert to grayscale
-        error_img.save(f"test6/error_{i}.png")
+        error_img.save(f"DeeperWider/error_{i}.png")
         if(i % 10 == 0):
             print(f"max error in image {i}: ", torch.max(recon_error[i]))
         #Display the error image and the original image
@@ -736,34 +736,34 @@ train_loader, test_loader = load_np_data()
 #model = Autoencoder()
 #model = DeeperAutoencoder()
 #model = WiderAutoencoder()
-#model = DeeperWiderAutoencoder()
+model = DeeperWiderAutoencoder()
 #model = NarrowerAutoencoder()
-model = ResNetAutoencoder(channels=4)
+#model = ResNetAutoencoder(channels=4)
 model.cuda() # Move the model to the GPU
 
 # Train the model
 #train_model(model, train_loader, test_loader, save_path='Simple_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Deeper_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Wider_autoencoder.pth')
-#train_model(model, train_loader, test_loader, save_path='DeeperWider_autoencoder.pth')
+train_model(model, train_loader, test_loader, save_path='DeeperWider_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Narrower_autoencoder.pth')
 #train_model(model, train_loader, test_loader, save_path='Simple_autoencoder_with_smoothing.pth')
 #train_model(model, train_loader, test_loader, save_path='ResNet_autoencoder.pth')
 
 # Load the trained model
-model = Autoencoder()
+#model = Autoencoder()
 #model = DeeperAutoencoder()
 #model = WiderAutoencoder()
-#model = DeeperWiderAutoencoder()
+model = DeeperWiderAutoencoder()
 #model = NarrowerAutoencoder()
 #model = ResNetAutoencoder(channels=4)
 
 #model.load_state_dict(torch.load('Simple_autoencoder.pth'))
 #model.load_state_dict(torch.load('Deeper_autoencoder.pth'))
 #model.load_state_dict(torch.load('Wider_autoencoder.pth'))
-#model.load_state_dict(torch.load('DeeperWider_autoencoder.pth'))
+model.load_state_dict(torch.load('DeeperWider_autoencoder.pth'))
 #model.load_state_dict(torch.load('Narrower_autoencoder.pth'))
-model.load_state_dict(torch.load('Simple_autoencoder_with_smoothing.pth'))
+#model.load_state_dict(torch.load('Simple_autoencoder_with_smoothing.pth'))
 #model.load_state_dict(torch.load('ResNet_autoencoder.pth'))
 model.eval()
 model.cuda()
