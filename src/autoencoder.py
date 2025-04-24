@@ -16,10 +16,15 @@ class Autoencoder(nn.Module):
             nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
             nn.ReLU()
+            
         )
         # Decoder
         self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
             nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),
@@ -30,6 +35,7 @@ class Autoencoder(nn.Module):
 
     def forward(self, x):
         encoded = self.encoder(x)
+        self.encoded = encoded
         decoded = self.decoder(encoded)
         return decoded
     
@@ -40,9 +46,23 @@ class Autoencoder(nn.Module):
 
 if __name__ == "__main__":
     from Dataloader import Dataloader
-    process = Dataloader(path='Datasets\Dataset003\Train', n_lights=24, width=224, height=224, top_light=True)
-    images = process.process_images('Datasets\Dataset003\Train24Lights', n_images=24)
-    print('Images shape:', images.shape)
+    process = Dataloader(path='Datasets\Dataset002\Train', n_lights=4, width=224, height=224, top_light=False)
+    images = process.get_images(n_images=4)
 
     images = torch.tensor(images, dtype=torch.float32)
-    # images = images.permute(0, 3, 1, 2)  # Change shape to (batch_size, channels, height, width)
+    image = images[0]
+    model = Autoencoder(n_channels=4)
+    output = model(image)
+
+    print("Input shape:", image.shape)
+    print("Output shape:", output.shape)
+
+    # print(image[0].detach().numpy())
+    from matplotlib import pyplot as plt
+    plt.subplot(1, 2, 1)
+    plt.title('Input Image')
+    plt.imshow(image[0].detach().numpy(), cmap='gray')
+    plt.subplot(1, 2, 2)
+    plt.title('Output Image')
+    plt.imshow(output[0].detach().numpy(), cmap='gray')
+    plt.show()
