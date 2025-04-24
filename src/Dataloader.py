@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 class Dataloader:
-    def __init__(self, path:str, n_lights:int = 4, width:int = 224, height:int =224, top_light:bool = True):
+    def __init__(self, path:str, n_lights:int = 24, width:int = 224, height:int =224, top_light:bool = True):
         '''
         Preprocess images for training and testing.
         '''
