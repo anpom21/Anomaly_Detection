@@ -3,3 +3,6 @@ carpet.tar.xz
 carpet/*
 OldDataResNet50AutoEnc.pth
 *.pth
+AD/*
+AD/
+
