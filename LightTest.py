@@ -30,7 +30,7 @@ def main():
         print(f"Testing with {i} lightsources")
         #Load the data
         #TODO: This is a list of images, we need them to be loaded into a train and validation dataloader
-        train_loader, test_loader = dataset.load_train_test_dataloaders_with_n_images(n_images=i, trainSplit=0.8)
+        train_loader, test_loader = dataset.load_train_test_dataloaders_with_n_images(train_path='Datasets/Dataset003/Train', test_path='Datasets/Dataset003/Test', n_images=i)
 
         #Load the model
         model = DeeperWiderAutoencoder(input_channels=i)
