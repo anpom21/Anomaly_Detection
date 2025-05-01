@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import torch
 from torchvision import transforms
+from torch.utils.data import random_split
 
 
 class Dataloader:
@@ -116,10 +117,29 @@ class Dataloader:
 
         
         return images
+    
+    def load_train_test_dataloaders_with_n_images(self, n_images:int = 4, trainSplit = 0.8, BS=16) -> tuple:
+        """
+        Process images for training and testing.
+        """
+        Dataset = self.get_images(n_images)
+        Dataset = Dataset/ 255.0
+        Dataset = torch.tensor(Dataset, dtype=torch.float32)
+
+        # Split the dataset into train and test sets
+        train_size = int(trainSplit * len(Dataset))
+        test_size = len(Dataset) - train_size
+        train_dataset, test_dataset = random_split(Dataset, [train_size, test_size])
+
+        # Create DataLoaders for training and testing datasets
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BS, shuffle=True)
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BS, shuffle=True)
+        
+        return train_loader, test_loader
         
         
 if __name__ == '__main__':
-    preprocess = Dataloader(path='Datasets\Dataset003\Train', n_lights=24, width=224, height=224, top_light=True)
+    preprocess = Dataloader(path='Datasets/Dataset003/Train', n_lights=24, width=224, height=224, top_light=True)
     preprocess.get_images(4)
     # images = preprocess.process_images('Datasets\Dataset003\Train24Lights', n_images=24)
     # np.save('Datasets\Dataset003\Train24Lights' + '.npy', images)
