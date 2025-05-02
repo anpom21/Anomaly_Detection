@@ -4,27 +4,19 @@ import numpy as np
 import torch
 from torchvision import transforms
 from torch.utils.data import random_split
-import yaml
-
 
 
 class Dataloader:
-    def __init__(self, path:str):
+    def __init__(self, path:str, n_lights:int = 24, width:int = 224, height:int =224, top_light:bool = True):
         '''
         Preprocess images for training and testing.
         '''
         self.path = path
-        with open(path + "/config.yaml", "r") as f:
-            config = yaml.safe_load(f)
-        self.n_lights = config['n_lights']
-        self.width = config['image_shape'][0]
-        self.height = config['image_shape'][1]
-        self.flat_light = config['flat_light']
-        self.n_images = self.n_lights + self.flat_light
-        self.n_samples = config['n_samples']
-
-        self.n_abnormals = config['n_abnormals']
-        self.n_normals = config['n_normals']
+        self.n_lights = n_lights
+        self.width = width
+        self.height = height
+        self.top_light = top_light
+        self.n_images = n_lights + top_light
 
     def select_image_indexes(self, n:int):
         indexes = []
@@ -50,16 +42,22 @@ class Dataloader:
 
         # Check if the directory is empty
         assert len(listdir) > 0, 'No images found in the directory'
-        i = 0
+
         for image in listdir:
             if image.endswith('.png'):
-                number = int(image.split('.')[0][-4:-1])  # Extract the number from the filename
-                if number % self.n_images in indexes:
-                    image_paths.append(os.path.join(path, image))
-            
-            # i+= 1
-            # if i >= 100:
-            #     break
+                filename = image.split('.')[0]  # Extract the filename without the extension
+                if filename.isdigit():  # If the filename is numeric
+                    number = int(filename)
+                    if number % self.n_images in indexes:
+                        image_paths.append(os.path.join(path, image))
+                elif filename.startswith('good'):  # Handle filenames starting with 'good'
+                    number = int(filename[len('good'):])  # Extract the numeric part after 'good'
+                    if number % self.n_images in indexes:
+                        image_paths.append(os.path.join(path, image))
+                elif filename.startswith('defect'):  # Handle filenames starting with 'defect'
+                    number = int(filename[len('defect'):])  # Extract the numeric part after 'defect'
+                    if number % self.n_images in indexes:
+                        image_paths.append(os.path.join(path, image))
 
         images = []
         for image_path in image_paths:
@@ -126,50 +124,6 @@ class Dataloader:
         
         return images
     
-    def load_train_vali_test_dataloaders_with_n_images(self, n_images: int = 4, trainSplit: float = 0.8, BS: int = 16) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
-        """
-        Process images for training and testing.
-        """
-        Dataset = self.get_images(self.path + "/Train", n_images)
-        Dataset = Dataset / 255.0
-        Dataset = torch.tensor(Dataset, dtype=torch.float32)
-
-        # Split the dataset into train and test sets
-        train_size = int(trainSplit * len(Dataset))
-        test_size = len(Dataset) - train_size
-        train_dataset, vali_dataset = random_split(Dataset, [train_size, test_size])
-
-        # Create DataLoaders for training and testing datasets
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BS, shuffle=True)
-        vali_loader = torch.utils.data.DataLoader(vali_dataset, batch_size=BS, shuffle=True)
-        test_loader = self.load_test_dataloader(n_images=n_images, BS=BS)
-
-        return train_loader, vali_loader, test_loader
-    
-    def load_test_dataloader(self, n_images: int = 4, BS: int = 16) -> torch.utils.data.DataLoader:
-        """
-        Load test images and labels them as defect or normal.
-        """
-        test_path = self.path + "/Test"
-        images = self.load_images(self.path + "/Test", n_images)
-        images = self.greyscale_images(images)
-        images = self.layer_images(images, n_images)
-        # labels = np.concatenate((np.ones(self.n_abnormals), np.zeros(self.n_normals))) # Alternative way to create labels
-        labels = self.load_labels(test_path)
-
-        assert len(images) == len(labels), "Mismatch in number of images and labels"
-
-        # Normalize and convert to tensors
-        images = np.array(images) / 255.0
-        images = torch.tensor(images, dtype=torch.float32)  # Add channel dimension
-        labels = torch.tensor(labels, dtype=torch.long) 
-
-        # Create a dataset and DataLoader
-        dataset = torch.utils.data.TensorDataset(images, labels)
-        test_loader = torch.utils.data.DataLoader(dataset, batch_size=BS, shuffle=False)
-
-        return test_loader
-    
     def load_labels(self, path:str) -> np.ndarray:
         """
         Load labels from the filename of the images in the directory.
@@ -190,12 +144,50 @@ class Dataloader:
                     labels.append(1)  # Anomaly
 
         return labels
+    
+    def load_train_test_dataloaders_with_n_images(self, train_path:str, test_path:str, n_images:int = 4, trainSplit = 0.8, BS=16) -> tuple:
+        """
+        Process images for training and testing.
+        """
+        # load train dataset
+        print("loading train dataset")
+        train_Dataset = self.get_images(path=train_path, n_images=n_images)
+        train_Dataset = train_Dataset/ 255.0
+        train_Dataset = torch.tensor(train_Dataset, dtype=torch.float32)
+
+        # load test dataset and labels
+        print("loading test dataset")
+        test_Dataset = self.get_images(path=test_path, n_images=n_images)
+        test_Dataset = test_Dataset/ 255.0
+        test_Dataset = torch.tensor(test_Dataset, dtype=torch.float32)
+        test_labels = self.load_labels(path=test_path)
+        test_labels = torch.tensor(test_labels, dtype=torch.float32)
+
+        assert len(test_Dataset) == len(test_labels), "Mismatch between test images and labels!"
+        test_dataset = torch.utils.data.TensorDataset(test_Dataset, test_labels)
+
+        print(f"Train Dataset Shape: {train_Dataset.shape}")
+        print(f"Test Dataset Shape: {test_Dataset.shape}")
+        print(f"Test Labels Shape: {test_labels.shape}")
+        # Split the dataset into train and test sets
+        #train_size = int(trainSplit * len(Dataset))
+        #test_size = len(Dataset) - train_size
+        #train_dataset, test_dataset = random_split(Dataset, [train_size, test_size])
+
+        # Create DataLoaders for training and testing datasets
+        train_loader = torch.utils.data.DataLoader(train_Dataset, batch_size=BS, shuffle=True)
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BS, shuffle=True)
+        vali_loader = 0
+        return train_loader, vali_loader, test_loader
         
         
 if __name__ == '__main__':
-    preprocess = Dataloader(path='Datasets/Dataset002')
-    train_loader, vali_loader, test_loader = preprocess.load_train_vali_test_dataloaders_with_n_images(n_images=4, trainSplit=0.8, BS=16)
+    preprocess = Dataloader(path='Datasets/Dataset003/Train', n_lights=24, width=224, height=224, top_light=True)
+    preprocess.get_images(4)
+    # images = preprocess.process_images('Datasets\Dataset003\Train24Lights', n_images=24)
+    # np.save('Datasets\Dataset003\Train24Lights' + '.npy', images)
+    # images = preprocess.process_flat_images('Datasets\Dataset003\TrainTopLight')
+    # np.save('Datasets\Dataset003\TrainTopLight' + '.npy', images)
 
-    print('Train loader:', train_loader.dataset.dataset.shape)
-    print('Test loader:', test_loader.dataset.tensors[0].shape)
-    print('labels:', test_loader.dataset.tensors[1].shape)
+    # for i in range(1,25):
+    #     print(preprocess.select_image_indexes(i))
