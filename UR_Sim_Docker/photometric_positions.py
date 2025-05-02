@@ -10,6 +10,8 @@ import spatialmath as sm
 import yaml
 import matplotlib.pyplot as plt
 import pickle
+from UR_get_object_position import load_yaml_position
+import math
 # from kinematic_functions import position_to_pose, pose_vector_to_se3, rotation_matrix_to_axis_angle, student_IK, move_to_start_configuration
 
 #!/usr/bin/env python3
@@ -17,7 +19,7 @@ import pickle
 
 # ----------------------------- Activate UR robot ---------------------------- #
 def activate_robot():
-    ip = "192.168.1.30"
+    ip = "localhost"
     ur_control = RTDEControlInterface(ip)
     ur_receive = RTDEReceiveInterface(ip)
     return ur_control, ur_receive
@@ -51,41 +53,75 @@ def position_to_pose(position, center):
     return SE3.Rt(rotation_matrix, position)
 
 
-def half_sphere_simple(n_light, center, height, distance, lighting_angle):
+def rotation_matrix_from_z_to_axis(axis):
     """
-    Calculate positions for light sources in a circle around a center point using spherical coordinates.
-    # Link to spherical coordinates
-    # https://www.researchgate.net/figure/Figure-A1-Spherical-coordinates_fig8_284609648
+    Returns a rotation matrix that rotates from z-axis to the given axis.
+    """
+    axis = np.array(axis)
+    axis = axis / np.linalg.norm(axis)  # Ensure it's a unit vector
 
+    z = np.array([0, 0, 1])
+    v = np.cross(z, axis)
+    c = np.dot(z, axis)
+
+    if np.allclose(v, 0):  # Already aligned
+        return np.eye(3)
+
+    vx = np.array([
+        [0, -v[2], v[1]],
+        [v[2], 0, -v[0]],
+        [-v[1], v[0], 0]
+    ])
+
+    R = np.eye(3) + vx + vx @ vx * ((1 - c) / (np.linalg.norm(v) ** 2))
+    return R
+
+
+def half_sphere_oriented(n_light, center, height, distance, lighting_angle, axis='z'):
+    """
+    Generate hemisphere points oriented along a specified axis.
 
     Args:
-        n_light (Int): Number of light sources
+        n_light (Int): Number of points
         center: Center coordinate [x, y, z]
-        height (Float): Height of light sources (z-coordinate)
-        distance (Float): Distance from center to each light source in the xy-plane
+        height: Not used here, retained for compatibility
+        distance (Float): Radial distance from center
+        lighting_angle (Float): Zenith angle in degrees (0 = aligned with axis)
+        axis (str or list): Axis to orient hemisphere around. Use 'x', 'y', 'z', or a 3D vector.
 
     Returns:
-        List of positions [x, y, z, rx, ry, rz] for each light source
+        List of positions [x, y, z]
     """
     positions = []
 
-    # Calculate the angle between each light source (azimuthal angle in spherical coordinates)
     angle_increment = 2 * math.pi / n_light
+    theta = np.deg2rad(90 - lighting_angle)
+    r = distance
+
+    # Determine the target axis direction
+    axis_vector = {
+        'x': [1, 0, 0],
+        'y': [0, 1, 0],
+        'z': [0, 0, 1]
+    }.get(axis if isinstance(axis, str) else None, axis)
+
+    R = rotation_matrix_from_z_to_axis(axis_vector)
 
     for i in range(n_light):
-        # Calculate the angle for this light source
         phi = i * angle_increment
 
-        r = distance
-        theta = np.deg2rad(90 - lighting_angle)
+        # Compute base position in z-up frame
+        local = np.array([
+            r * np.sin(theta) * np.cos(phi),
+            r * np.sin(theta) * np.sin(phi),
+            r * np.cos(theta)
+        ])
 
-        # Calculate position (using spherical coordinates converted to cartesian)
-        # In this case, all points are at same distance (r) and height (theta is fixed)
-        x = center[0] + r * np.sin(theta) * np.cos(phi)
-        y = center[1] + r * np.sin(theta) * np.sin(phi)
-        z = center[2] + r * np.cos(theta)
+        # Rotate into target frame
+        rotated = R @ local
+        pos = center + rotated
 
-        positions.append([x, y, z])
+        positions.append(pos.tolist())
 
     return positions
 
@@ -324,6 +360,8 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
     fig.canvas.mpl_connect('key_press_event', on_key_press)
 
     plt.show()
+    print("Robot positions: ", robot_pos.positions)
+    print("Number of positions: ", robot_pos.count)
 
     save_pos = input("\nDo you want to save the positions? (y/n): ")
     filename = "robot_position.pkl"
@@ -342,6 +380,7 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
     print("Number of positions: ", robot_pos.count)
     print("Position labels: ", robot_pos.labels)
     print("Number of light positions: ", robot_pos.light_positions)
+    print("Home position: ", robot_pos.home_position)
     print("Number of intermediate positions: ",
           robot_pos.intermediate_positions)
 
@@ -400,13 +439,14 @@ def plot_simple(T, center, light_radius, light_height, n_light):
 
 
 class robot_positions:
-    def __init__(self, object_position):
+    def __init__(self, object_position, home_position=[0, -np.pi/2, np.pi/2, 0, np.pi/2, 0]):
         self.light_positions = []
         self.intermediate_positions = []
         self.positions = []
         self.labels = []
         self.count = 0
         self.object_position = object_position
+        self.home_position = home_position
 
     def add_light_position(self, position):
         self.light_positions.append(position)
@@ -432,22 +472,18 @@ class robot_positions:
 
 def main():
 
-    # Example usage:
-
     # Parameters
     n_light = 4
-
-    center = [0.052801537962651426, -
-              0.6246056483945657, -0.1511657694167367]  # 0.3
     light_radius = 0.35
-    light_height = 0.18
     light_angle = 60
 
     # ---- Calculate light positions ---- #
+    center = load_yaml_position("metal_plate_position.yaml")
+    light_height = 0.18
 
     # # # Half Sphere # # #
-    pos_half_sphere = half_sphere_simple(
-        n_light, center, light_height, light_radius, light_angle)
+    pos_half_sphere = half_sphere_oriented(
+        n_light, center, light_height, light_radius, light_angle, axis='y')
 
     # # # Repulsion # # #
     pos_itr = random_on_sphere(n_light)
