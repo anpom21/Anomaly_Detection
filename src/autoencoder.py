@@ -55,7 +55,8 @@ class Autoencoder(nn.Module):
         decoded = x
 
         return decoded
-    
+
+
 
 
 
@@ -63,8 +64,8 @@ class Autoencoder(nn.Module):
 
 if __name__ == "__main__":
     from src.Dataloader import Dataloader
-    process = Dataloader(path='Datasets\Dataset002\Train', n_lights=4, width=224, height=224, top_light=False)
-    images = process.get_images(n_images=4)
+    process = Dataloader(path='Datasets\Dataset002')
+    images = process.get_images(process.path + "\Train", n_images=4)
 
     images = torch.tensor(images, dtype=torch.float32)
     image = images[0]
