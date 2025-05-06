@@ -8,10 +8,9 @@ from PySide6.QtWidgets import (
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from Game.flappy_bird import run_game
 
 # Import our game module
-from Game.Flappy_bird_game import PygameGame
+from flappy_bird import run_game
 
 # Placeholder functions for PSI calculation and BPM reading
 

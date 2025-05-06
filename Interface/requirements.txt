@@ -1,0 +1,8 @@
+pyserial
+pygame
+websocket-client
+websockets
+PySide6
+matplotlib
+numpy
+PyYAML

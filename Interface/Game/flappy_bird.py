@@ -12,9 +12,11 @@ import yaml
 # ---------------------------------------------------------------------------- #
 #                                   Functions                                  #
 # ---------------------------------------------------------------------------- #
+clock = pygame.time.Clock()
 
 
-def wait_for_start_zone(bird_rect, drone_img, screen, font):
+def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
+    global clock
     start_zone = pygame.Rect(40, 40, 120, 30)
     bird_velocity = 0
 
@@ -178,148 +180,151 @@ def read_position(bird_rect):
 # ---------------------------------------------------------------------------- #
 #                                Intialize game                                #
 # ---------------------------------------------------------------------------- #
-# Initialize pygame
-pygame.init()
+def run_game():
+    # Initialize pygame
+    pygame.init()
 
-# Screen settings
-WIDTH, HEIGHT = 400, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-clock = pygame.time.Clock()
+    # Screen settings
+    WIDTH, HEIGHT = 400, 600
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    clock = pygame.time.Clock()
 
-# Background setup
-background_width = 587
-background_img = pygame.image.load("Game/background_looping.png").convert()
-background_img = pygame.transform.scale(
-    background_img, (background_width, HEIGHT))  # 587x600
-background_start_x = 0
-background_x = background_start_x
-scroll_speed = 1.5  # Tune as you like
+    # Background setup
+    background_width = 587
+    background_img = pygame.image.load("Game/background_looping.png").convert()
+    background_img = pygame.transform.scale(
+        background_img, (background_width, HEIGHT))  # 587x600
+    background_start_x = 0
+    background_x = background_start_x
+    scroll_speed = 1.5  # Tune as you like
 
+    # Bird setup (pos 0-565)
+    bird_speed = 4
+    bird_width = 35
+    bird_height = 35
+    drone_img = pygame.image.load("Game/drone_white.png").convert_alpha()
+    # Scale the image to fit the bird size
+    drone_img = pygame.transform.scale(drone_img, (bird_width, bird_height))
+    bird_rect = pygame.Rect(50, HEIGHT // 2, bird_width, bird_height)
 
-# Bird setup (pos 0-565)
-bird_speed = 4
-bird_width = 35
-bird_height = 35
-drone_img = pygame.image.load("Game/drone_white.png").convert_alpha()
-# Scale the image to fit the bird size
-drone_img = pygame.transform.scale(drone_img, (bird_width, bird_height))
-bird_rect = pygame.Rect(50, HEIGHT // 2, bird_width, bird_height)
-
-
-# Pipe setup
-pipe_width = 60
-pipe_gap = 60
-pipe_height = random.randint(150, 450)
-pipe_x = WIDTH
-pipe_speed = 3
-laser_img = pygame.image.load("Game/laser4.png").convert_alpha()
-laser_width, laser_height = laser_img.get_size()
-top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
-bottom_pipe = pygame.Rect(
-    pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
-
-
-# Score
-font = pygame.font.SysFont(None, 48)
-score = 0
-
-# Heart rate
-font = pygame.font.SysFont(None, 48)
-heart_rate = 60  # Example heart rate
-
-# Game loop
-running = True
-first_run = True
-
-# Timer
-start_timer = 0
-
-# Start heart rate stream
-start_heart_rate_stream()
-
-bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
-
-# ---------------------------------------------------------------------------- #
-#                               Run the game loop                              #
-# ---------------------------------------------------------------------------- #
-while running:
-    clock.tick(60)  # 60 FPS
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-
-    # ------------------------------------ Bird ---------------------------------- #
-    # Bird movement
-    keys = pygame.key.get_pressed()
-    acceleration = 1
-    max_speed = 6.5
-    friction = 10
-    bird_speed = update_bird_velocity(
-        bird_speed, keys, acceleration, max_speed, friction)
-
-    bird_rect.y += bird_speed
-    # ----------------------------------- Pipes ---------------------------------- #
-    if first_run:
-        pipe_x = WIDTH-pipe_width
-
-    # Adjust pipe speed based on heart rate
-    pipe_x -= bpm_to_speed(read_bpm.bpm_data)
-    if pipe_x < -pipe_width:
-        pipe_x = WIDTH
-        pipe_height = random.randint(150, 450)
-        score += 1
-
+    # Pipe setup
+    pipe_width = 60
+    pipe_gap = 60
+    pipe_height = random.randint(150, 450)
+    pipe_x = WIDTH
+    pipe_speed = 3
+    laser_img = pygame.image.load("Game/laser4.png").convert_alpha()
+    laser_width, laser_height = laser_img.get_size()
     top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
     bottom_pipe = pygame.Rect(
         pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
-    # ---------------------------- Collision detection --------------------------- #
-    if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT:
-        print(f"Game Over! Final Score: {score}")
-        # Reset game state
-        bird_speed = 0
-        pipe_x = WIDTH
-        bird_rect, background_start_x = game_over(
-            bird_rect, score, drone_img, screen, font, background_img, background_x, clock)
-        start_timer = 0
-        first_run = True
-        score = 0
-        # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
-    # -------------------------------- Background -------------------------------- #
-    # Update scroll position
-    background_x -= pipe_speed/4 * 1.5  # scroll_speed
-    if background_x <= -background_width:
-        background_x += background_width
 
-    if first_run:
-        background_x = background_start_x
+    # Score
+    font = pygame.font.SysFont(None, 48)
+    score = 0
 
-    # Draw two copies to handle wrap-around
-    screen.blit(background_img, (background_x, 0))
-    screen.blit(background_img, (background_x + background_width, 0))
+    # Heart rate
+    font = pygame.font.SysFont(None, 48)
+    heart_rate = 60  # Example heart rate
 
-    # ---------------------------------- Drawing --------------------------------- #
+    # Game loop
+    running = True
+    first_run = True
 
-    screen.blit(drone_img, bird_rect)  # Bird - yellow
-    # For top laser (positioned based on pipe_height)
-    top_laser_y = pipe_height - laser_height
-    screen.blit(laser_img, (pipe_x, top_laser_y))
+    # Timer
+    start_timer = 0
 
-    # For bottom laser
-    bottom_laser_y = pipe_height + pipe_gap
-    screen.blit(laser_img, (pipe_x, bottom_laser_y))
+    # Start heart rate stream
+    start_heart_rate_stream()
 
-    # ------------------------------- Score display ------------------------------ #
-    score_text = font.render(str(score), True, (255, 255, 255))
-    heart_rate_text = font.render(
-        str(read_bpm.bpm_data), True, (255, 0, 0))
-    screen.blit(heart_rate_text, (10, 10))
-    screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 20))
+    bird_rect = wait_for_start_zone(
+        bird_rect, background_img, drone_img, screen, font)
 
-    if start_timer == 0:
-        start_timer = pygame.time.get_ticks()
-    elif pygame.time.get_ticks() - start_timer > 1000:
-        first_run = False
+    # ---------------------------------------------------------------------------- #
+    #                               Run the game loop                              #
+    # ---------------------------------------------------------------------------- #
+    while running:
+        clock.tick(60)  # 60 FPS
 
-    pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        # ------------------------------------ Bird ---------------------------------- #
+        # Bird movement
+        keys = pygame.key.get_pressed()
+        acceleration = 1
+        max_speed = 6.5
+        friction = 10
+        bird_speed = update_bird_velocity(
+            bird_speed, keys, acceleration, max_speed, friction)
+
+        bird_rect.y += bird_speed
+        # ----------------------------------- Pipes ---------------------------------- #
+        if first_run:
+            pipe_x = WIDTH-pipe_width
+
+        # Adjust pipe speed based on heart rate
+        pipe_x -= bpm_to_speed(read_bpm.bpm_data)
+        if pipe_x < -pipe_width:
+            pipe_x = WIDTH
+            pipe_height = random.randint(150, 450)
+            score += 1
+
+        top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
+        bottom_pipe = pygame.Rect(
+            pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
+        # ---------------------------- Collision detection --------------------------- #
+        if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT:
+            print(f"Game Over! Final Score: {score}")
+            # Reset game state
+            bird_speed = 0
+            pipe_x = WIDTH
+            bird_rect, background_start_x = game_over(
+                bird_rect, score, drone_img, screen, font, background_img, background_x, clock)
+            start_timer = 0
+            first_run = True
+            score = 0
+            # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
+        # -------------------------------- Background -------------------------------- #
+        # Update scroll position
+        background_x -= pipe_speed/4 * 1.5  # scroll_speed
+        if background_x <= -background_width:
+            background_x += background_width
+
+        if first_run:
+            background_x = background_start_x
+
+        # Draw two copies to handle wrap-around
+        screen.blit(background_img, (background_x, 0))
+        screen.blit(background_img, (background_x + background_width, 0))
+
+        # ---------------------------------- Drawing --------------------------------- #
+
+        screen.blit(drone_img, bird_rect)  # Bird - yellow
+        # For top laser (positioned based on pipe_height)
+        top_laser_y = pipe_height - laser_height
+        screen.blit(laser_img, (pipe_x, top_laser_y))
+
+        # For bottom laser
+        bottom_laser_y = pipe_height + pipe_gap
+        screen.blit(laser_img, (pipe_x, bottom_laser_y))
+
+        # ------------------------------- Score display ------------------------------ #
+        score_text = font.render(str(score), True, (255, 255, 255))
+        heart_rate_text = font.render(
+            str(read_bpm.bpm_data), True, (255, 0, 0))
+        screen.blit(heart_rate_text, (10, 10))
+        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 20))
+
+        if start_timer == 0:
+            start_timer = pygame.time.get_ticks()
+        elif pygame.time.get_ticks() - start_timer > 1000:
+            first_run = False
+
+        pygame.display.update()
+
+
+if __name__ == "__main__":
+    run_game()
