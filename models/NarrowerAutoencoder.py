@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 
 class NarrowerAutoencoder(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels=4):
+        self.channels = input_channels
         super(NarrowerAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(4, 64, kernel_size=4),
+            nn.Conv2d(self.channels, 64, kernel_size=4),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
             nn.Conv2d(64, 128, kernel_size=4),
@@ -20,7 +21,7 @@ class NarrowerAutoencoder(nn.Module):
             nn.ReLU(),
             nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, output_padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 4, kernel_size=5, stride=2, output_padding=1),
+            nn.ConvTranspose2d(64, self.channels, kernel_size=5, stride=2, output_padding=1),
             nn.Sigmoid()
         )
 

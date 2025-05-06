@@ -5,12 +5,14 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, precision_score
 import matplotlib.pyplot as plt
+import os
+import pandas as pd
 
 class Trainer:
     """
     Goal of this file: contain the training loop.
     """
-    def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_path='best_model.pth', patience=5):
+    def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_path='best_model.pth', patience=5, FigSavePath=None, ModelName=None, display=True):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         print(f"Using device: {device}")
         model = model.to(device)
@@ -100,7 +102,14 @@ class Trainer:
         plt.title('Training and Validation Loss')
         plt.legend()
         plt.grid()
-        plt.show()
+        if FigSavePath is not None:
+            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+            plt.savefig(f"{FigSavePath}{ModelName}TrainValLoss.png")
+        if display:
+            plt.show()
+        else:
+            plt.close()
+        
 
     # def train_model(model, train_loader, val_loader, num_epochs=20, lr=0.001, save_path='best_model.pth', patience=5):
     #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -220,7 +229,7 @@ class Trainer:
 
     #     return accuracy, precision, conf_matrix, class_report
     
-    def validate(model, val_loader, threshold):
+    def validate(model, val_loader, threshold, FigSavePath=None, ModelName=None, display=True):
         """
         Validate the model on the validation dataset.
         """
@@ -273,7 +282,13 @@ class Trainer:
         plt.title('MSE Histogram with Threshold')
         plt.legend()
         plt.grid()
-        plt.show()
+        if FigSavePath is not None:
+            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+            plt.savefig(f"{FigSavePath}{ModelName}MSEHistLabeled.png")
+        if display:
+            plt.show()
+        else:
+            plt.close()
 
         # Plot MSE Criterion Histogram with Threshold:
         plt.figure(dpi=250, figsize=(12, 8))
@@ -285,7 +300,13 @@ class Trainer:
         plt.title('MSE Criterion Histogram with Threshold')
         plt.legend()
         plt.grid()
-        plt.show()
+        if FigSavePath is not None:
+            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+            plt.savefig(f"{FigSavePath}{ModelName}MSEHistCritLabeled.png")
+        if display:
+            plt.show()
+        else:
+            plt.close()
 
         # Calculate metrics
         accuracy = accuracy_score(true_labels, predicted_labels)
@@ -299,6 +320,55 @@ class Trainer:
         print(conf_matrix)
         print("Classification Report:")
         print(class_report)
+
+        # plot the confusion matrix
+        plt.figure(figsize=(8, 6))
+        plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+        plt.title('Confusion Matrix')
+        plt.colorbar()
+        tick_marks = np.arange(len(np.unique(true_labels)))
+        plt.xticks(tick_marks, np.unique(true_labels))
+        plt.yticks(tick_marks, np.unique(true_labels))
+        plt.ylabel('True label')
+        plt.xlabel('Predicted label')
+        plt.grid(False)
+        if FigSavePath is not None:
+            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+            plt.savefig(f"{FigSavePath}{ModelName}ConfusionMat.png")
+        if display:
+            plt.show()
+        else:
+            plt.close()
+
+        # Example classification report as a string
+        # Replace this with your actual `class_report`
+        class_report_dict = classification_report(true_labels, predicted_labels, output_dict=True)
+
+        # Convert the classification report to a DataFrame
+        class_report_df = pd.DataFrame(class_report_dict).transpose()
+
+        # Plot the table
+        plt.figure(figsize=(12, 6))
+        plt.axis("off")  # Turn off the axes
+        plt.title("Classification Report", fontsize=16)
+        table = plt.table(cellText=class_report_df.values,
+                        colLabels=class_report_df.columns,
+                        rowLabels=class_report_df.index,
+                        cellLoc="center",
+                        loc="center")
+
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.auto_set_column_width(col=list(range(len(class_report_df.columns))))
+
+        # Save the figure
+        if FigSavePath is not None:
+            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+            plt.savefig(f"{FigSavePath}{ModelName}ClassReportTable.png")
+        if display:
+            plt.show()
+        else:
+            plt.close()
 
         return accuracy, precision, conf_matrix, class_report
 
