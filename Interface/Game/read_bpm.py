@@ -1,4 +1,5 @@
 import websocket
+from websocket import WebSocketApp
 import json
 import threading
 import time
