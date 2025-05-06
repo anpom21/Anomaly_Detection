@@ -162,6 +162,19 @@ def update_bird_velocity(velocity, keys, acceleration=0.5, max_speed=6, friction
     return velocity
 
 
+def read_position(bird_rect):
+    # Read the position from the file
+    keys = pygame.key.get_pressed()
+    acceleration = 1
+    max_speed = 6.5
+    friction = 10
+    bird_speed = update_bird_velocity(
+        bird_speed, keys, acceleration, max_speed, friction)
+    bird_position = bird_rect.y + bird_speed
+
+    return bird_position
+
+
 # ---------------------------------------------------------------------------- #
 #                                Intialize game                                #
 # ---------------------------------------------------------------------------- #
@@ -178,7 +191,8 @@ background_width = 587
 background_img = pygame.image.load("Game/background_looping.png").convert()
 background_img = pygame.transform.scale(
     background_img, (background_width, HEIGHT))  # 587x600
-background_x = 0
+background_start_x = 0
+background_x = background_start_x
 scroll_speed = 1.5  # Tune as you like
 
 
@@ -246,19 +260,6 @@ while running:
         bird_speed, keys, acceleration, max_speed, friction)
 
     bird_rect.y += bird_speed
-
-    # ---------------------------- Collision detection --------------------------- #
-    if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT:
-        print(f"Game Over! Final Score: {score}")
-        # Reset game state
-        bird_speed = 0
-        pipe_x = WIDTH
-        bird_rect, background_x = game_over(
-            bird_rect, score, drone_img, screen, font, background_img, background_x, clock)
-        start_timer = 0
-        first_run = True
-        score = 0
-        # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
     # ----------------------------------- Pipes ---------------------------------- #
     if first_run:
         pipe_x = WIDTH-pipe_width
@@ -273,6 +274,18 @@ while running:
     top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
     bottom_pipe = pygame.Rect(
         pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
+    # ---------------------------- Collision detection --------------------------- #
+    if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT:
+        print(f"Game Over! Final Score: {score}")
+        # Reset game state
+        bird_speed = 0
+        pipe_x = WIDTH
+        bird_rect, background_start_x = game_over(
+            bird_rect, score, drone_img, screen, font, background_img, background_x, clock)
+        start_timer = 0
+        first_run = True
+        score = 0
+        # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
     # -------------------------------- Background -------------------------------- #
     # Update scroll position
     background_x -= pipe_speed/4 * 1.5  # scroll_speed
@@ -280,7 +293,7 @@ while running:
         background_x += background_width
 
     if first_run:
-        background_x = 0
+        background_x = background_start_x
 
     # Draw two copies to handle wrap-around
     screen.blit(background_img, (background_x, 0))
