@@ -9,11 +9,15 @@ api_key = "lbqkYkwtreFXrOIk719jlZGX0doM0vCBjM3WbhpZY2HhSlBDIUU2oX7GLJ5D26mW"  # 
 
 ws_url = f"wss://app.hyperate.io/socket/websocket?token={api_key}&vsn=2.0.0"
 
-bpm_data = 70  # Initialize bpm_data variable
+bpm_data = 0  # Initialize bpm_data variable
+initial_bpm = 0  # Initialize initial_bpm variable
+first_run = True  # Initialize first_run variable
 
 
 def on_message(ws, message):
     global bpm_data  # Declare bpm_data as global to modify it
+    global initial_bpm  # Declare initial_bpm as global to modify it
+    global first_run  # Declare first_run as global to modify it
     try:
         data = json.loads(message)
 
@@ -24,8 +28,12 @@ def on_message(ws, message):
             if event == "hr_update":
                 bpm = payload.get('hr')
                 if bpm is not None:
-                    print(f"❤️ Heart Rate: {bpm} BPM")
+                    # print(f"❤️ Heart Rate: {bpm} BPM")
                     bpm_data = bpm  # Update the global BPM variable
+                    if first_run:
+                        initial_bpm = bpm
+                        print("❤️ Intial BPM set to:", initial_bpm)
+                        first_run = False  # Set first_run to False after receiving the first BPM
             else:
                 print(f"📨 Received other event: {event}")
         else:
