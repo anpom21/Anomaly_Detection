@@ -8,3 +8,4 @@ AD/
 figures/*
 figures/
 saved_models/*
+*.xlsx
