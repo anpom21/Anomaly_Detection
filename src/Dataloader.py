@@ -1,0 +1,172 @@
+import os
+import cv2
+import numpy as np
+import torch
+from torchvision import transforms
+from torch.utils.data import random_split
+
+
+class Dataloader:
+    def __init__(self, path:str, n_lights:int = 24, width:int = 224, height:int =224, top_light:bool = True):
+        '''
+        Preprocess images for training and testing.
+        '''
+        self.path = path
+        self.n_lights = n_lights
+        self.width = width
+        self.height = height
+        self.top_light = top_light
+        self.n_images = n_lights + top_light
+
+    def select_image_indexes(self, n:int):
+        indexes = []
+        for i in range(n):
+            indexes.append(i*self.n_lights//n)
+        return indexes
+    
+    def greyscale_images(self, images):
+        greyscale_images = []
+        for image in images:
+            greyscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            greyscale_images.append(greyscale_image)
+        return greyscale_images
+    
+    def load_images(self, path, n):
+        '''
+        Load images from the dataset
+        '''
+        image_paths = []
+        listdir = os.listdir(path)
+
+        indexes = self.select_image_indexes(n)
+
+        # Check if the directory is empty
+        assert len(listdir) > 0, 'No images found in the directory'
+        i = 0
+        for image in listdir:
+            if image.endswith('.png'):
+                number = int(image.split('.')[0])  # Extract the number from the filename
+                if number % self.n_images in indexes:
+                    image_paths.append(os.path.join(path, image))
+            
+            # i+= 1
+            # if i >= 100:
+            #     break
+
+        images = []
+        for image_path in image_paths:
+            image = cv2.imread(image_path)
+            images.append(image)
+
+        return images
+
+    def load_flat_images(self, path):
+        '''
+        Load flat images from the dataset
+        '''
+        image_paths = []
+        listdir = os.listdir(path)
+        # Check if the directory is empty
+        assert len(listdir) > 0, 'No images found in the directory'
+        i = 0
+        for image in listdir:
+            if image.endswith('.png'):
+                number = int(image.split('.')[0])  # Extract the number from the filename
+                if number % self.n_images == self.n_images - 1:
+                    image_paths.append(os.path.join(path, image))
+            
+            # i+= 1
+            # if i >= 100:
+            #     break
+
+        images = []
+        for image_path in image_paths:
+            image = cv2.imread(image_path)
+            images.append(image)
+        return images
+    
+    def layer_images(self, images, n) -> np.ndarray:
+        # Reshape the images list into a 2D list with n columns
+        reshaped_images = [images[i:i + n] for i in range(0, len(images), n)]
+        reshaped_images = np.array(reshaped_images)
+
+        return reshaped_images
+
+    def get_images(self, n_images:int = 4) -> np.ndarray:
+        """
+        Process images for training and testing.
+        """
+        images = self.load_images(self.path, n_images)
+        # print('Loaded images shape:', np.array(images).shape)
+        images = self.greyscale_images(images)
+        # print('Greyscale images shape:', np.array(images).shape)
+        images = self.layer_images(images, n_images)
+
+        # print('Images shape:', images.shape)
+
+        
+        return images
+    
+    def load_flat_data(self, savefilename:str) -> None:
+        """
+        Process images for training and testing.
+        """
+        images = self.load_flat_images(self.path)
+        images = self.greyscale_images(images)
+        # print('Loaded images shape:', np.array(images).shape)
+
+        
+        return images
+    
+    def load_train_test_dataloaders_with_n_images(self, n_images:int = 4, trainSplit = 0.8, BS=16) -> tuple:
+        """
+        Process images for training and testing.
+        """
+        Dataset = self.get_images(n_images)
+        Dataset = Dataset/ 255.0
+        Dataset = torch.tensor(Dataset, dtype=torch.float32)
+
+        # Split the dataset into train and test sets
+        train_size = int(trainSplit * len(Dataset))
+        test_size = len(Dataset) - train_size
+        train_dataset, test_dataset = random_split(Dataset, [train_size, test_size])
+
+        # Create DataLoaders for training and testing datasets
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BS, shuffle=True)
+        test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=BS, shuffle=True)
+        
+        return train_loader, test_loader
+        
+    def get_labels(self) -> list:
+        """
+        Extract labels from the filenames in the dataset folder.
+        Assumes that each set of 25 images corresponds to one sample.
+        """
+        listdir = os.listdir(self.path)
+        labels = []
+
+        # Sort the filenames to ensure consistent ordering
+        listdir.sort()
+
+        # Iterate through the filenames
+        for i in range(0, len(listdir), self.n_images):  # Group by n_images (24 lights + 1 top image)
+            group = listdir[i:i + self.n_images]
+            if len(group) == self.n_images:  # Ensure the group is complete
+                # Check if any filename in the group indicates a defect
+                if any("defect" in filename.lower() for filename in group):
+                    labels.append(1)  # 1 for defective
+                else:
+                    labels.append(0)  # 0 for good
+
+        return labels
+            
+if __name__ == '__main__':
+    preprocess = Dataloader(path='Datasets/Dataset003/Train', n_lights=24, width=224, height=224, top_light=True)
+    preprocess.get_images(4)
+    # images = preprocess.process_images('Datasets\Dataset003\Train24Lights', n_images=24)
+    # np.save('Datasets\Dataset003\Train24Lights' + '.npy', images)
+    # images = preprocess.process_flat_images('Datasets\Dataset003\TrainTopLight')
+    # np.save('Datasets\Dataset003\TrainTopLight' + '.npy', images)
+
+    # for i in range(1,25):
+    #     print(preprocess.select_image_indexes(i))

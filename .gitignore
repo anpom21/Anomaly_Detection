@@ -4,3 +4,4 @@ carpet/*
 AD/*
 AD/
 .venv/
+*.xlsx
