@@ -38,7 +38,7 @@ def main():
 
     # Check if the pose is reachable
     robot = rtb.models.UR5()
-    for pos in robot_positions.positions:
+    for pos in robot_positions.light_positions:
         T = position_to_pose(pos, robot_positions.object_position)
 
         sol = robot.ikine_LM(T, q0=robot_positions.home_position)
@@ -99,9 +99,11 @@ def main():
         return False
     # ----------------------------- Execute trial run ---------------------------- #
     if trial_run_input != "n":
-        velocity = 0.3
+        velocity = 0.15
         acceleration = 0.2
-        if trial_run(real_ur_control, robot_positions, velocity, acceleration):
+        trial_succes = trial_run(
+            real_ur_control, robot_positions, velocity, acceleration)
+        if trial_succes:
             print("\n[INFO] Trial run completed successfully")
         else:
             print("\n[ERROR] Failed to complete trial run")

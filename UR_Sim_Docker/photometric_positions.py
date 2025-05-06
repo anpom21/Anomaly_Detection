@@ -19,7 +19,7 @@ import math
 
 # ----------------------------- Activate UR robot ---------------------------- #
 def activate_robot():
-    ip = "localhost"
+    ip = "192.168.1.30"
     ur_control = RTDEControlInterface(ip)
     ur_receive = RTDEReceiveInterface(ip)
     return ur_control, ur_receive
@@ -28,14 +28,14 @@ def activate_robot():
 # --------------------- Postions to Transformation matrix -------------------- #
 
 
-def position_to_pose(position, center):
+def position_to_pose(position, center, rotz=0):
     # The pose should be represented as a 4x4 transformation matrix
     z_axis = np.array(center) - np.array(position)
     z_axis = z_axis / np.linalg.norm(z_axis)
 
     # Define the x-axis as the tangent to the circle
     x_axis = np.array([-z_axis[1], z_axis[0], 0])
-    x_axis = x_axis / np.linalg.norm(x_axis)
+    x_axis = -x_axis / np.linalg.norm(x_axis)
 
     # Define the y-axis as the cross product of z and x
     y_axis = np.cross(z_axis, x_axis)
@@ -108,7 +108,7 @@ def half_sphere_oriented(n_light, center, height, distance, lighting_angle, axis
     R = rotation_matrix_from_z_to_axis(axis_vector)
 
     for i in range(n_light):
-        phi = i * angle_increment
+        phi = i * angle_increment + np.pi / 4
 
         # Compute base position in z-up frame
         local = np.array([
@@ -334,7 +334,9 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
     def on_key_press(event):
         if event.key == "enter":
             print("Make intermediate pose.")
-            ur_control, ur_receive = activate_robot()
+            ip = "192.168.1.30"
+            ur_control = RTDEControlInterface(ip)
+            ur_receive = RTDEReceiveInterface(ip)
 
             if ur_control.teachMode():
                 print("[INFO] Teach mode activated.")
@@ -346,13 +348,22 @@ def plot_light_positions(T, center, light_radius, light_height, n_light):
 
             input("Press enter to save position and exit teach mode.")
 
+            ur_control.endTeachMode()
+            print("[INFO] Teach mode deactivated.")
+            q = ur_receive.getActualQ()
+            print("Joint angles:", q)
             pose = ur_receive.getActualTCPPose()
-            robot_pos.add_intermediate(pose)
+            print("Pose:", pose)
+            ur_control.disconnect()
+            print("Robot disconnected.")
+            ur_receive.disconnect()
+            print("Robot disconnected.")
+            robot_pos.add_intermediate(q)
+            print("Pose:", pose)
             ax.text(pose[0], pose[1], pose[2], str(
                 robot_pos.count), fontsize=12)
             print("Position saved.")
             print(pose[:3])
-            ur_control.endTeachMode()
             print("[INFO] Teach mode deactivated.")
 
     # Connect the onpick event handler
@@ -454,9 +465,9 @@ class robot_positions:
         self.labels.append("Light")
         self.count += 1
 
-    def add_intermediate_position(self, position):
-        self.intermediate_positions.append(position)
-        self.positions.append(position)
+    def add_intermediate(self, q):
+        self.intermediate_positions.append(q)
+        self.positions.append(q)
         self.labels.append("Intermediate")
         self.count += 1
 
@@ -474,8 +485,8 @@ def main():
 
     # Parameters
     n_light = 4
-    light_radius = 0.35
-    light_angle = 60
+    light_radius = 0.3
+    light_angle = 50
 
     # ---- Calculate light positions ---- #
     center = load_yaml_position("metal_plate_position.yaml")
@@ -494,7 +505,7 @@ def main():
     T_light = [position_to_pose(pos, center) for pos in pos_half_sphere]
 
     # --- Plotting --- #
-    plot_simple(T_light, center, light_radius, light_height, n_light)
+    # plot_simple(T_light, center, light_radius, light_height, n_light)
     plot_light_positions(T_light, center, light_radius, light_height, n_light)
 
 

@@ -19,9 +19,8 @@ def load_yaml_position(filename):
 def main():
     # ------------------------ Connect to the robot ------------------------ #
     # Replace with your robot's IP address
-    # ip = "localhost"
+    ip = "localhost"
     ip = "192.168.1.30"
-
     # Connect to the robot
     rtde_c = RTDEControlInterface(ip)
     rtde_r = RTDEReceiveInterface(ip)
@@ -31,6 +30,21 @@ def main():
     else:
         print("[ERROR] Failed to connect to the robot")
         return
+
+    current_q = rtde_r.getActualQ()
+    print("[INFO] Current joint angles:", current_q)
+    # Pose of the end effector in the base frame
+    current_pose = rtde_r.getActualTCPPose()
+    print("[INFO] Current end effector pose:", current_pose)
+    # Move to q
+    q_rtb = [-2.314551, - 0.20553135,  1.71054773,
+             2.29812167,  0.79435806, - 0.67166277]
+    q = [0.51193746, -0.87995084,  0.45437693,
+         0.74222859,  0.956926,    0.21843418]
+    input()
+    rtde_c.moveJ(q, 0.2, 0.2)
+    q_sim = rtde_r.getActualQ()
+    print("[INFO] Moved to the initial position", q_sim)
 
     # -------------------------- Set robot to freedrive -------------------------- #
     rtde_c.teachMode()
