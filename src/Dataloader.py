@@ -30,6 +30,7 @@ class Dataloader:
         indexes = []
         for i in range(n):
             indexes.append(i*self.n_lights//n)
+        # print('Indexes:', indexes)
         return indexes
     
     def greyscale_images(self, images):
@@ -47,7 +48,7 @@ class Dataloader:
         listdir = os.listdir(path)
 
         indexes = self.select_image_indexes(n)
-
+        # print("indexes:", indexes)
         # Check if the directory is empty
         assert len(listdir) > 0, 'No images found in the directory'
         i = 0
@@ -55,6 +56,7 @@ class Dataloader:
             if image.endswith('.png'):
                 number = int(image.split('.')[0][-4:])  # Extract the number from the filename
                 if number % self.n_images in indexes:
+                    # print("image name:", image)
                     image_paths.append(os.path.join(path, image))
             
             # i+= 1
@@ -143,14 +145,13 @@ class Dataloader:
         train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BS, shuffle=True)
         vali_loader = torch.utils.data.DataLoader(vali_dataset, batch_size=BS, shuffle=True)
         test_loader = self.load_test_dataloader(n_images=n_images, BS=BS)
-
         return train_loader, vali_loader, test_loader
     
-    def load_test_dataloader(self, n_images: int = 4, BS: int = 16) -> torch.utils.data.DataLoader:
+    def load_test_dataloader(self, n_images: int = 4, BS: int = 16, path: str = "/Test") -> torch.utils.data.DataLoader:
         """
         Load test images and labels them as defect or normal.
         """
-        test_path = self.path + "/Test"
+        test_path = self.path + path
         images = self.load_images(self.path + "/Test", n_images)
         images = self.greyscale_images(images)
         images = self.layer_images(images, n_images)
