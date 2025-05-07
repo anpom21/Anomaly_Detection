@@ -8,33 +8,33 @@ Truely a ChatGPT masterpiece.
 """
 
 class TruelyWiderAutoencoder(nn.Module):
-    def __init__(self, input_channels=4):
+    def __init__(self, input_channels=4, base_ch=256):
         self.channels = input_channels
         super(TruelyWiderAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(self.channels, 512, kernel_size=3, padding=1),  # Wider with more channels
+            nn.Conv2d(self.channels, base_ch, kernel_size=3, padding=1),  # Wider with more channels
             nn.ReLU(),
-            nn.Conv2d(512, 1024, kernel_size=3, padding=1),  # Wider and deeper
-            nn.ReLU(),
-            nn.AvgPool2d(kernel_size=2, stride=2),  # Downsample
-            nn.Conv2d(1024, 1024, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(1024, 2048, kernel_size=3, padding=1),  # Even wider
+            nn.Conv2d(base_ch, base_ch*2, kernel_size=3, padding=1),  # Wider and deeper
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),  # Downsample
-            nn.Conv2d(2048, 2048, kernel_size=3, padding=1),
+            nn.Conv2d(base_ch*2, base_ch*2, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(base_ch*2, base_ch*4, kernel_size=3, padding=1),  # Even wider
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2, stride=2),  # Downsample
+            nn.Conv2d(base_ch*4, base_ch*4, kernel_size=3, padding=1),
             nn.ReLU(),
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(2048, 2048, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample
+            nn.ConvTranspose2d(base_ch*4, base_ch*4, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample
             nn.ReLU(),
-            nn.ConvTranspose2d(2048, 1024, kernel_size=3, padding=1),
+            nn.ConvTranspose2d(base_ch*4, base_ch*2, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(1024, 1024, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample
+            nn.ConvTranspose2d(base_ch*2, base_ch*2, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample
             nn.ReLU(),
-            nn.ConvTranspose2d(1024, 512, kernel_size=3, padding=1),
+            nn.ConvTranspose2d(base_ch*2, base_ch, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(512, self.channels, kernel_size=3, padding=1),  # Final layer to match input channels
+            nn.ConvTranspose2d(base_ch, self.channels, kernel_size=3, padding=1),  # Final layer to match input channels
             nn.Sigmoid()
         )
 
@@ -79,25 +79,26 @@ class HighFreqUNetAE(nn.Module):
             nn.Conv2d(base_ch*8, base_ch*8, kernel_size=3, dilation=2, padding=2),
             nn.ReLU(inplace=True),
         )
-
+        
         # Decoder + skips
         self.up2 = nn.ConvTranspose2d(base_ch*8, base_ch*4, kernel_size=4, stride=2, padding=1)
+        # now in_channels = base_ch*4 (u2) + base_ch*2 (e2) = base_ch*6
         self.dec2 = nn.Sequential(
-            nn.Conv2d(base_ch*4*2, base_ch*4, kernel_size=3, padding=1),
+            nn.Conv2d(base_ch*6, base_ch*4, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(base_ch*4,   base_ch*4, kernel_size=3, padding=1),
+            nn.Conv2d(base_ch*4, base_ch*4, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
         )
 
         self.up1 = nn.ConvTranspose2d(base_ch*4, base_ch*2, kernel_size=4, stride=2, padding=1)
+        # now in_channels = base_ch*2 (u1) + base_ch (e1) = base_ch*3
         self.dec1 = nn.Sequential(
-            nn.Conv2d(base_ch*2*2, base_ch*2, kernel_size=3, padding=1),
+            nn.Conv2d(base_ch*3, base_ch*2, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
-            nn.Conv2d(base_ch*2,   base_ch,   kernel_size=3, padding=1),
+            nn.Conv2d(base_ch*2, base_ch,   kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
         )
 
-        # Final projection
         self.final = nn.Conv2d(base_ch, in_channels, kernel_size=1)
 
     def forward(self, x):

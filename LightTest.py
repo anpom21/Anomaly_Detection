@@ -17,10 +17,11 @@ from src.Dataloader import Dataloader
 from src.Trainer import Trainer
 
 import matplotlib as mpl
+import pandas as pd
 
 # Enable LaTeX rendering TODO: Install latex either MiKTeX or TeX Live
-# mpl.rcParams['text.usetex'] = True
-# mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (serif)
+mpl.rcParams['text.usetex'] = True
+mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (serif)
 
 # Create a list of models to test
 models = [
@@ -30,8 +31,8 @@ models = [
     "NarrowerAutoencoder",
     "WiderAutoencoder",
     "ResNetAutoencoder",
-    # "TruelyWiderAutoencoder", # TODO: UPS this model takes to much GPU memory. IDK what to do with it.
-    # "HighFreqUNetAE",
+    "TruelyWiderAutoencoder",
+    "HighFreqUNetAE",
 ]
 
 if __name__ == "__main__":
@@ -40,6 +41,8 @@ if __name__ == "__main__":
     Fig_SavePath = "LightTestFigures/"
     display = False
     
+    best_model_performance = []
+
     for model_name in models:
         i = 0 
         thresholds = []
@@ -68,9 +71,9 @@ if __name__ == "__main__":
             elif model_name == "NarrowerAutoencoder":
                 model = NarrowerAutoencoder(input_channels=i)
             elif model_name == "TruelyWiderAutoencoder":
-                model = TruelyWiderAutoencoder(input_channels=i)
+                model = TruelyWiderAutoencoder(input_channels=i, base_ch=128)
             elif model_name == "HighFreqUNetAE":
-                model = HighFreqUNetAE(in_channels=i, base_ch=256)
+                model = HighFreqUNetAE(in_channels=i, base_ch=128)
             elif model_name == "WiderAutoencoder":
                 model = WiderAutoencoder(input_channels=i)
             elif model_name == "ResNetAutoencoder":
@@ -97,9 +100,9 @@ if __name__ == "__main__":
             elif model_name == "NarrowerAutoencoder":
                 model = NarrowerAutoencoder(input_channels=i)
             elif model_name == "TruelyWiderAutoencoder":
-                model = TruelyWiderAutoencoder(input_channels=i)
+                model = TruelyWiderAutoencoder(input_channels=i, base_ch=128)
             elif model_name == "HighFreqUNetAE":
-                model = HighFreqUNetAE(in_channels=i, base_ch=256)
+                model = HighFreqUNetAE(in_channels=i, base_ch=128)
             elif model_name == "WiderAutoencoder":
                 model = WiderAutoencoder(input_channels=i)
             elif model_name == "ResNetAutoencoder":
@@ -135,7 +138,50 @@ if __name__ == "__main__":
             plt.show()
         else:
             plt.close()
+
+        # Add the best model and its performance to the list
+        best_model_performance.append({
+            "model": model_name,
+            "best_accuracy": max(accuracys),
+            "best_precision": max(precisions),
+            "best_lightsources": accuracys.index(max(accuracys)) * 4 + 4
+        })
+
         print(f"Testing {model_name} finished")
+    
+    # Plot a graph of the best model performances
+    # Convert to DataFrame
+    df = pd.DataFrame(best_model_performance)
+
+    # Plot 1: Accuracy vs. Number of Light Sources
+    plt.figure()
+    plt.scatter(df['best_lightsources'], df['best_accuracy'])
+    for i, txt in enumerate(df['model']):
+        plt.annotate(txt, (df['best_lightsources'][i], df['best_accuracy'][i]))
+    plt.xlabel('Best Number of Light Sources')
+    plt.ylabel('Best Accuracy')
+    plt.title('Model Accuracy vs. Best Light Sources')
+    plt.tight_layout()
+    plt.savefig(f"{Fig_SavePath}Best_Accuracy_vs_Best_Light_Sources.png")
+    if display:
+        plt.show()
+    else:
+        plt.close()
+
+    # Plot 2: Precision vs. Number of Light Sources
+    plt.figure()
+    plt.scatter(df['best_lightsources'], df['best_precision'])
+    for i, txt in enumerate(df['model']):
+        plt.annotate(txt, (df['best_lightsources'][i], df['best_precision'][i]))
+    plt.xlabel('Best Number of Light Sources')
+    plt.ylabel('Best Precision')
+    plt.title('Model Precision vs. Best Light Sources')
+    plt.tight_layout()
+    plt.savefig(f"{Fig_SavePath}Best_Precision_vs_Best_Light_Sources.png")
+    if display:
+        plt.show()
+    else:
+        plt.close()
             
 
 
