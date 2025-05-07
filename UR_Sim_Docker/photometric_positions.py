@@ -77,7 +77,7 @@ def rotation_matrix_from_z_to_axis(axis):
     return R
 
 
-def half_sphere_oriented(n_light, center, height, distance, lighting_angle, axis='z'):
+def half_sphere_oriented(n_light, center, height, distance, lighting_angle, axis='z', offset_angle=0):
     """
     Generate hemisphere points oriented along a specified axis.
 
@@ -108,7 +108,7 @@ def half_sphere_oriented(n_light, center, height, distance, lighting_angle, axis
     R = rotation_matrix_from_z_to_axis(axis_vector)
 
     for i in range(n_light):
-        phi = i * angle_increment + np.pi / 4
+        phi = i * angle_increment + offset_angle
 
         # Compute base position in z-up frame
         local = np.array([
@@ -485,7 +485,7 @@ def main():
 
     # Parameters
     n_light = 4
-    light_radius = 0.3
+    light_radius = 0.35
     light_angle = 50
 
     # ---- Calculate light positions ---- #
@@ -494,7 +494,7 @@ def main():
 
     # # # Half Sphere # # #
     pos_half_sphere = half_sphere_oriented(
-        n_light, center, light_height, light_radius, light_angle, axis='y')
+        n_light, center, light_height, light_radius, light_angle, axis='y', offset_angle=np.pi/4)
 
     # # # Repulsion # # #
     pos_itr = random_on_sphere(n_light)

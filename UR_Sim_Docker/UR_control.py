@@ -65,22 +65,39 @@ def collect_sample(ur_control, camera_system, robot_positions, path, velocity=1.
         return False
 
     T_poses = []
-    for pos in robot_positions.positions:
-        T_poses.append(position_to_pose(pos, robot_positions.object_position))
+    for i, pos in enumerate(robot_positions.positions):
+        if robot_positions.labels[i] == "Light":
+            T_poses.append(position_to_pose(
+                pos, robot_positions.object_position))
+        else:
+            # Intermediates are joint angles
+            T_poses.append(pos)
 
     # Move to each position
     for i, T in enumerate(T_poses):
+        pose = 0
         # Print the current position
-        print(f"Move to position {i+1}/{len(T_poses)}: \n{T.t} \n {T.R}")
-        # Move to the position
-        AA_pose = list(T.t.tolist()) + \
-            list(rotation_matrix_to_axis_angle(T.R))
+        if robot_positions.labels[i] == "Light":
+            print(
+                f"[NEW] Next position: {i+1}/{len(T_poses)}: \n{T.t}\n {T.R}")
+            pose = list(T.t.tolist()) + \
+                list(rotation_matrix_to_axis_angle(T.R))
+            print(f"[INFO] Axis angle: {pose}")
+        else:
+            # Intermediates are joint angles
+            print("[INFO] INTERMEDIATE")
+            pose = T
 
-        print(f"Axis angle: {AA_pose}")
-
         # Move to the position
-        success = ur_control.moveJ_IK(
-            AA_pose, speed=velocity, acceleration=acceleration)
+        if robot_positions.labels[i] == "Light":
+            input("[INFO] Press enter to move to the next light source")
+            success = ur_control.moveJ_IK(
+                pose, speed=velocity, acceleration=acceleration)
+        else:
+            input("[INFO] Press enter to move to the next intermediate position")
+            print("[INFO] Joint angles:", pose)
+            success = ur_control.moveJ(
+                pose, speed=velocity, acceleration=acceleration)
 
         img_count = 0
 
@@ -125,24 +142,26 @@ def trial_run(ur_control, robot_positions, velocity=0.2, acceleration=0.2):
             pose_T.append(pos)
     # Move to each position
     for i, T in enumerate(pose_T):
+        pose = 0
         if robot_positions.labels[i] == "Light":
             print(f"[NEW] Next position: {i+1}/{len(pose_T)}: \n{T.t}\n {T.R}")
-            pose_AA = list(T.t.tolist()) + \
+            pose = list(T.t.tolist()) + \
                 list(rotation_matrix_to_axis_angle(T.R))
-            print(f"[INFO] Axis angle: {pose_AA}")
+            print(f"[INFO] Axis angle: {pose}")
         else:
             # Intermediates are joint angles
             print("[INFO] INTERMEDIATE")
+            pose = T
 
         # Move to the position
         if robot_positions.labels[i] == "Light":
             input("[INFO] Press enter to move to the next light source")
             success = ur_control.moveJ_IK(
-                pose_AA, speed=velocity, acceleration=acceleration)
+                pose, speed=velocity, acceleration=acceleration)
         else:
             input("[INFO] Press enter to move to the next intermediate position")
             success = ur_control.moveJ(
-                pose_AA, speed=velocity, acceleration=acceleration)
+                pose, speed=velocity, acceleration=acceleration)
 
         if not success:
             print(f"[ERROR] Failed to move to position {i+1}")

@@ -41,10 +41,8 @@ def main():
              2.29812167,  0.79435806, - 0.67166277]
     q = [0.51193746, -0.87995084,  0.45437693,
          0.74222859,  0.956926,    0.21843418]
-    input()
-    rtde_c.moveJ(q, 0.2, 0.2)
+    # rtde_c.moveJ(q, 0.2, 0.2)
     q_sim = rtde_r.getActualQ()
-    print("[INFO] Moved to the initial position", q_sim)
 
     # -------------------------- Set robot to freedrive -------------------------- #
     rtde_c.teachMode()
@@ -64,9 +62,9 @@ def main():
     # ------------------------ Save position in yaml file ------------------------ #
     filename = "metal_plate_position.yaml"
 
-    input("[PROMPT] Save the position in a YAML file? (y/n)")
+    save_yaml = input("[PROMPT] Save the position in a YAML file? (y/n)")
 
-    if input().lower() != 'y':
+    if save_yaml.lower() != 'y':
         print("[INFO] Exiting without saving.")
         return
 

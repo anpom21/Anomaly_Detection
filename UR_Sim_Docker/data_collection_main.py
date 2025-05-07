@@ -60,13 +60,13 @@ def main():
         else:
             print("[ERROR] Failed to connect to the simulation robot")
             return False
-        velocity = 0.2
+        velocity = 0.8
         acceleration = 0.2
         if trial_run(sim_ur_control, robot_positions, velocity, acceleration):
             print("\n[INFO] Simulation trial run completed successfully")
         else:
             print("\n[ERROR] Failed to complete simulation trial run")
-            real_ur_control.disconnect()
+            sim_ur_control.disconnect()
             return False
         sim_ur_control.disconnect()
         sim_ur_receive.disconnect()
@@ -99,7 +99,7 @@ def main():
         return False
     # ----------------------------- Execute trial run ---------------------------- #
     if trial_run_input != "n":
-        velocity = 0.15
+        velocity = 0.1
         acceleration = 0.2
         trial_succes = trial_run(
             real_ur_control, robot_positions, velocity, acceleration)
@@ -121,8 +121,8 @@ def main():
         n_its = 1
 
     # Set the speed and acceleration for data collection
-    velocity = 1
-    acceleration = 1.4
+    velocity = 0.2
+    acceleration = 0.5
     print(f"[INFO] Speed: {velocity} rad/s")
     print(f"[INFO]Acceleration: {acceleration} rad/s^2")
 
