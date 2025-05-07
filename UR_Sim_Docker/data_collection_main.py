@@ -121,7 +121,7 @@ def main():
         n_its = 1
 
     # Set the speed and acceleration for data collection
-    velocity = 0.2
+    velocity = 0.3
     acceleration = 0.5
     print(f"[INFO] Speed: {velocity} rad/s")
     print(f"[INFO]Acceleration: {acceleration} rad/s^2")

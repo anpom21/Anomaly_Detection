@@ -16,7 +16,3 @@ file = open(rob_pos_filename, "rb")
 robot_position = pickle.load(file)
 file.close()
 print("[INFO] Positions loaded successfully")
-
-
-print("[INFO]", robot_position.light_positions)
-print("[INFO]", robot_position.intermediate)
