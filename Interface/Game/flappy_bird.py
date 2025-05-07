@@ -27,7 +27,7 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                # sys.exit()
 
         # Move bird
         bird_velocity = update_bird_velocity(bird_velocity, keys)
@@ -87,7 +87,7 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                # sys.exit()
 
         # Move bird so it can "fly into" start zone to restart
         bird_velocity = update_bird_velocity(bird_velocity, keys)
@@ -249,7 +249,7 @@ def run_game():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                # sys.exit()
 
         # ------------------------------------ Bird ---------------------------------- #
         # Bird movement
@@ -327,4 +327,5 @@ def run_game():
 
 
 if __name__ == "__main__":
+
     run_game()
