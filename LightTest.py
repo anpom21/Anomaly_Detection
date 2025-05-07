@@ -110,6 +110,8 @@ if __name__ == "__main__":
             elif model_name == "ResNetAutoencoder":
                 model = ResNetAutoencoder(channels=i)
 
+            model.load_state_dict(torch.load(f"models/Trained_models/LightTest/{model_name}_{i}.pth"))
+
             model.eval()
             print(f"Model {model_name} loaded with {i} lightsources")
 
