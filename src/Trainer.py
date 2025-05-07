@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix, classification_report, accuracy_sc
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
+import seaborn as sns
 
 class Trainer:
     """
@@ -266,7 +267,7 @@ class Trainer:
 
                 # Predict based on threshold
                 for i in range(len(reconstruction_error)):
-                    thresholded = np.where(reconstruction_error[i][0:-10,0:-10].cpu().numpy() > 0.01, reconstruction_error[i][0:-10,0:-10].cpu().numpy(), 0)
+                    thresholded = np.where(reconstruction_error[i][0:-10,0:-10].cpu().numpy() > threshold, reconstruction_error[i][0:-10,0:-10].cpu().numpy(), 0)
                     predicted = 1 if thresholded.max() > 0 else 0  # Anomaly if max value > 0, otherwise normal
                     predicted_labels.append(predicted)
 
@@ -322,16 +323,19 @@ class Trainer:
         print(class_report)
 
         # plot the confusion matrix
-        plt.figure(figsize=(8, 6))
-        plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
-        plt.title('Confusion Matrix')
-        plt.colorbar()
-        tick_marks = np.arange(len(np.unique(true_labels)))
-        plt.xticks(tick_marks, np.unique(true_labels))
-        plt.yticks(tick_marks, np.unique(true_labels))
-        plt.ylabel('True label')
+        plt.figure(figsize=(8,6))
+        sns.heatmap(
+            conf_matrix,
+            annot=True,        # draw the numbers
+            fmt='d',           # integer format
+            cmap='Blues',      # same palette
+            cbar=True,
+            xticklabels=np.unique(true_labels),
+            yticklabels=np.unique(true_labels)
+        )
         plt.xlabel('Predicted label')
-        plt.grid(False)
+        plt.ylabel('True label')
+        plt.title('Confusion Matrix')
         if FigSavePath is not None:
             os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
             plt.savefig(f"{FigSavePath}{ModelName}ConfusionMat.png")

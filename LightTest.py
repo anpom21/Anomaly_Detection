@@ -23,6 +23,8 @@ import pandas as pd
 mpl.rcParams['text.usetex'] = True
 mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (serif)
 
+# TODO: Train the last two models and test everyting agian
+
 # Create a list of models to test
 models = [
     "Autoencoder",
@@ -31,13 +33,13 @@ models = [
     "NarrowerAutoencoder",
     "WiderAutoencoder",
     "ResNetAutoencoder",
-    "TruelyWiderAutoencoder",
-    "HighFreqUNetAE",
+    # "TruelyWiderAutoencoder",
+    # "HighFreqUNetAE",
 ]
 
 if __name__ == "__main__":
     #dataset_path = 'Datasets/Dataset004'
-    dataset_path = 'Datasets/Dataset003'
+    dataset_path = 'Datasets/Dataset004'
     Fig_SavePath = "LightTestFigures/"
     display = False
     
@@ -106,7 +108,7 @@ if __name__ == "__main__":
             elif model_name == "WiderAutoencoder":
                 model = WiderAutoencoder(input_channels=i)
             elif model_name == "ResNetAutoencoder":
-                model = ResNetAutoencoder(num_channels=i)
+                model = ResNetAutoencoder(channels=i)
 
             model.eval()
             print(f"Model {model_name} loaded with {i} lightsources")

@@ -53,7 +53,7 @@ class Dataloader:
         i = 0
         for image in listdir:
             if image.endswith('.png'):
-                number = int(image.split('.')[0][-4:-1])  # Extract the number from the filename
+                number = int(image.split('.')[0][-4:])  # Extract the number from the filename
                 if number % self.n_images in indexes:
                     image_paths.append(os.path.join(path, image))
             
@@ -193,9 +193,24 @@ class Dataloader:
         
         
 if __name__ == '__main__':
-    preprocess = Dataloader(path='Datasets/Dataset002')
+    preprocess = Dataloader(path='Datasets/Dataset004')
     train_loader, vali_loader, test_loader = preprocess.load_train_vali_test_dataloaders_with_n_images(n_images=4, trainSplit=0.8, BS=16)
 
-    print('Train loader:', train_loader.dataset.dataset.shape)
-    print('Test loader:', test_loader.dataset.tensors[0].shape)
-    print('labels:', test_loader.dataset.tensors[1].shape)
+    # print('Train loader:', train_loader.dataset.dataset.shape)
+    # print('Test loader:', test_loader.dataset.tensors[0].shape)
+    # print('labels:', test_loader.dataset.tensors[1].shape)
+    print(preprocess.n_images)
+    images = preprocess.get_images(preprocess.path + "\Train", n_images=4)
+    print("Images shape:", np.array(images).shape)
+    images = torch.tensor(images, dtype=torch.float32)
+    image = images[0].unsqueeze(0)
+    print("Input shape:", image.shape)
+
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5))
+    ax[0].imshow(image[0].cpu().detach().numpy()[0])
+    ax[1].imshow(image[0].cpu().detach().numpy()[1])
+    ax[2].imshow(image[0].cpu().detach().numpy()[2])
+    ax[3].imshow(image[0].cpu().detach().numpy()[3])
+    plt.show()
