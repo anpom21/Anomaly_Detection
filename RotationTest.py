@@ -28,7 +28,7 @@ if __name__ == "__main__":
         model = Autoencoder()
         print("Model loaded")
 
-        #Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=150, lr=0.001, save_path=f"models/Trained_models/Autoencoder_{i}rotation.pth", patience=40)
+        Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=150, lr=0.001, save_path=f"models/Trained_models/Autoencoder_{i}rotation.pth", patience=40)
         #print("Model trained")
 
         #Load the model

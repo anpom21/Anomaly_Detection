@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
             # Train the model
             modelName =f"{model_name}_{i}"
-            Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
+            #Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
 
             # Prepare for test
             dataset = Dataloader(dataset_path)
@@ -111,7 +111,6 @@ if __name__ == "__main__":
                 model = ResNetAutoencoder(channels=i)
 
             model.load_state_dict(torch.load(f"models/Trained_models/LightTest/{model_name}_{i}.pth"))
-
             model.eval()
             print(f"Model {model_name} loaded with {i} lightsources")
 

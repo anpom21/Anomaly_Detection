@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 import numpy as np
-from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, precision_score
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score, precision_score, roc_auc_score, roc_curve, auc
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
@@ -230,151 +230,285 @@ class Trainer:
 
     #     return accuracy, precision, conf_matrix, class_report
     
-    def validate(model, val_loader, threshold, FigSavePath=None, ModelName=None, display=True):
+    def validate(model, val_loader, threshold, thresholdType=None, FigSavePath=None, ModelName=None, display=True):
         """
-        Validate the model on the validation dataset.
+        Validate the model on the validation dataset and plot histogram, confusion matrix,
+        classification report, and ROC curve.
         """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = model.to(device)
         model.eval()
 
-        criterion = nn.MSELoss()
-
+        # storage
         true_labels = []
         predicted_labels = []
-
-        MSECriterion = []
-        MSECriterionAnomaly = []
+        anomaly_scores = []
         MSE = []
         MSEAnomaly = []
 
         with torch.no_grad():
-            for images, labels in val_loader:  # Assuming val_loader returns (images, labels)
+            for images, labels in val_loader:  # val_loader yields (images, labels)
                 images = images.to(device).float()
-                labels = labels.cpu().numpy()  # Convert labels to numpy for metrics
-                true_labels.extend(labels)
+                labels = labels.cpu().numpy()
 
                 # Forward pass
                 outputs = model(images)
-                reconstruction_error = ((images - outputs) ** 2).mean(axis=(1))  # Per-image anomaly score
-                #MSE.append(((images-outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean(axis=(1,2)))
-                if (labels==1):
-                    MSEAnomaly.append((((images - outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean()).cpu().numpy())
-                    MSECriterionAnomaly.append(criterion(outputs, images).item())
-                else:
-                    MSE.append((((images - outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean()).cpu().numpy())
-                    MSECriterion.append(criterion(outputs, images).item())
+                # per-pixel error map, cropping off last 10 pixels
+                reconstruction_error = ((images - outputs)**2).mean(dim=1)[:, :-10, :-10]
 
-                # Predict based on threshold
-                for i in range(len(reconstruction_error)):
-                    thresholded = np.where(reconstruction_error[i][0:-10,0:-10].cpu().numpy() > threshold, reconstruction_error[i][0:-10,0:-10].cpu().numpy(), 0)
-                    predicted = 1 if thresholded.max() > 0 else 0  # Anomaly if max value > 0, otherwise normal
-                    predicted_labels.append(predicted)
+                # collect MSE lists for histogram
+                for i, lbl in enumerate(labels):
+                    err_map = reconstruction_error[i]
+                    if lbl == 1:
+                        if thresholdType in ("maxPix", "maxPixMSE"):
+                            MSEAnomaly.append(err_map.max().item())
+                        else:  # "MSE"
+                            MSEAnomaly.append(err_map.mean().item())
+                    else:
+                        if thresholdType in ("maxPix", "maxPixMSE"):
+                            MSE.append(err_map.max().item())
+                        else:
+                            MSE.append(err_map.mean().item())
 
-        #MSE = torch.cat(MSE).cpu().numpy()
+                # predictions + scores
+                err_np = reconstruction_error.cpu().numpy()
+                for i, lbl in enumerate(labels):
+                    if thresholdType in ("maxPix", "maxPixMSE"):
+                        score = err_np[i].max()
+                    else:  # "MSE"
+                        score = err_np[i].mean()
+                    anomaly_scores.append(score)
+                    pred = 1 if score > threshold else 0
+                    predicted_labels.append(pred)
+                    true_labels.append(int(lbl))
 
-        #Plot MSE Histogram with Threshold:
+        # 1) Histogram of scores
         plt.figure(dpi=250, figsize=(12, 8))
-        plt.hist(MSE, bins=25, alpha=0.5, label='MSE')
-        plt.hist(MSEAnomaly, bins=25, alpha=0.5, label='MSE Anomaly')
-        plt.axvline(x=threshold, color='r', linestyle='dashed', linewidth=2, label='Threshold')
-        plt.xlabel('MSE')
+        plt.hist(MSE, bins=25, alpha=0.5, label='good')
+        plt.hist(MSEAnomaly, bins=25, alpha=0.5, label='anomaly')
+        plt.axvline(x=threshold, color='r', linestyle='dashed', linewidth=2, label='threshold')
+        plt.xlabel('Anomaly Score')
         plt.ylabel('Frequency')
-        plt.title('MSE Histogram with Threshold')
+        plt.title(f'Anomaly Score Histogram ({thresholdType})')
         plt.legend()
-        plt.grid()
-        if FigSavePath is not None:
+        plt.grid(True)
+        if FigSavePath:
             os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
-            plt.savefig(f"{FigSavePath}{ModelName}MSEHistLabeled.png")
-        if display:
-            plt.show()
-        else:
-            plt.close()
+            plt.savefig(f"{FigSavePath}{ModelName}_{thresholdType}_hist.png")
+        if display: plt.show()
+        else: plt.close()
 
-        # Plot MSE Criterion Histogram with Threshold:
-        plt.figure(dpi=250, figsize=(12, 8))
-        plt.hist(MSECriterion, bins=25, alpha=0.5, label='MSE Criterion')
-        plt.hist(MSECriterionAnomaly, bins=25, alpha=0.5, label='MSE Criterion Anomaly')
-        plt.axvline(x=threshold, color='r', linestyle='dashed', linewidth=2, label='Threshold')
-        plt.xlabel('MSE Criterion')
-        plt.ylabel('Frequency')
-        plt.title('MSE Criterion Histogram with Threshold')
-        plt.legend()
-        plt.grid()
-        if FigSavePath is not None:
-            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
-            plt.savefig(f"{FigSavePath}{ModelName}MSEHistCritLabeled.png")
-        if display:
-            plt.show()
-        else:
-            plt.close()
-
-        # Calculate metrics
+        # 2) Metrics and confusion matrix
         accuracy = accuracy_score(true_labels, predicted_labels)
         precision = precision_score(true_labels, predicted_labels, zero_division=0)
         conf_matrix = confusion_matrix(true_labels, predicted_labels)
         class_report = classification_report(true_labels, predicted_labels)
 
-        print(f"Accuracy: {accuracy:.4f}")
+        print(f"Accuracy:  {accuracy:.4f}")
         print(f"Precision: {precision:.4f}")
         print("Confusion Matrix:")
         print(conf_matrix)
         print("Classification Report:")
         print(class_report)
 
-        # plot the confusion matrix
-        plt.figure(figsize=(8,6))
-        sns.heatmap(
-            conf_matrix,
-            annot=True,        # draw the numbers
-            fmt='d',           # integer format
-            cmap='Blues',      # same palette
-            cbar=True,
-            xticklabels=np.unique(true_labels),
-            yticklabels=np.unique(true_labels)
-        )
+        # plot confusion matrix
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
+                    xticklabels=np.unique(true_labels),
+                    yticklabels=np.unique(true_labels))
         plt.xlabel('Predicted label')
         plt.ylabel('True label')
         plt.title('Confusion Matrix')
-        if FigSavePath is not None:
-            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
-            plt.savefig(f"{FigSavePath}{ModelName}ConfusionMat.png")
-        if display:
-            plt.show()
-        else:
-            plt.close()
+        if FigSavePath:
+            plt.savefig(f"{FigSavePath}{ModelName}{thresholdType}_confusion.png")
+        if display: plt.show()
+        else: plt.close()
 
-        # Example classification report as a string
-        # Replace this with your actual `class_report`
-        class_report_dict = classification_report(true_labels, predicted_labels, output_dict=True)
-
-        # Convert the classification report to a DataFrame
-        class_report_df = pd.DataFrame(class_report_dict).transpose()
-
-        # Plot the table
+        # plot classification report as table
+        rep_dict = classification_report(true_labels, predicted_labels, output_dict=True)
+        rep_df = pd.DataFrame(rep_dict).transpose()
         plt.figure(figsize=(12, 6))
-        plt.axis("off")  # Turn off the axes
-        plt.title("Classification Report", fontsize=16)
-        table = plt.table(cellText=class_report_df.values,
-                        colLabels=class_report_df.columns,
-                        rowLabels=class_report_df.index,
-                        cellLoc="center",
-                        loc="center")
+        plt.axis('off')
+        plt.title('Classification Report', fontsize=16)
+        tbl = plt.table(cellText=rep_df.values,
+                        colLabels=rep_df.columns,
+                        rowLabels=rep_df.index,
+                        cellLoc='center',
+                        loc='center')
+        tbl.auto_set_font_size(False)
+        tbl.set_fontsize(10)
+        tbl.auto_set_column_width(col=list(range(len(rep_df.columns))))
+        if FigSavePath:
+            plt.savefig(f"{FigSavePath}{ModelName}{thresholdType}_class_report.png")
+        if display: plt.show()
+        else: plt.close()
 
-        table.auto_set_font_size(False)
-        table.set_fontsize(10)
-        table.auto_set_column_width(col=list(range(len(class_report_df.columns))))
+        # 3) ROC curve
+        fpr, tpr, ROCThresholds = roc_curve(true_labels, anomaly_scores)
+        roc_auc = auc(fpr, tpr)
 
-        # Save the figure
-        if FigSavePath is not None:
-            os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
-            plt.savefig(f"{FigSavePath}{ModelName}ClassReportTable.png")
-        if display:
-            plt.show()
-        else:
-            plt.close()
+        distances = np.sqrt((fpr - 0)**2 + (tpr - 1)**2)
+        opt_idx = np.argmin(distances)
+        best_thresh_dist = ROCThresholds[opt_idx]
+        print(f"Min‐distance threshold: {best_thresh_dist:.4f} (TPR={tpr[opt_idx]:.3f}, FPR={fpr[opt_idx]:.3f})")   
 
-        return accuracy, precision, conf_matrix, class_report
+        plt.figure(figsize=(8, 6))
+        plt.plot(fpr, tpr, label=f'AUC = {roc_auc:.3f}')
+        plt.plot([0, 1], [0, 1], '--', label='chance')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title(f'ROC Curve ({thresholdType})')
+        plt.legend(loc='lower right')
+        plt.grid(True)
+        if FigSavePath:
+            plt.savefig(f"{FigSavePath}{ModelName}_roc.png")
+        if display: plt.show()
+        else: plt.close()
+
+        return accuracy, precision, conf_matrix, class_report, ROCThresholds, roc_auc
+
+    # def validate(model, val_loader, threshold, thresholdType = None, FigSavePath=None, ModelName=None, display=True):
+    #     """
+    #     Validate the model on the validation dataset.
+    #     """
+    #     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #     model = model.to(device)
+    #     model.eval()
+
+    #     criterion = nn.MSELoss()
+
+    #     true_labels = []
+    #     predicted_labels = []
+
+    #     MSE = []
+    #     MSEAnomaly = []
+
+    #     with torch.no_grad():
+    #         for images, labels in val_loader:  # Assuming val_loader returns (images, labels)
+    #             images = images.to(device).float()
+    #             labels = labels.cpu().numpy()  # Convert labels to numpy for metrics
+    #             true_labels.extend(labels)
+
+    #             # Forward pass
+    #             outputs = model(images)
+    #             reconstruction_error = ((images - outputs)**2).mean(axis=(1))[:,0:-10,0:-10]#((images - outputs) ** 2).mean(axis=(1))  # Per-image anomaly score
+    #             #MSE.append(((images-outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean(axis=(1,2)))
+    #             if (labels==1):
+    #                 if thresholdType == "maxPix" or thresholdType == "maxPixMSE":
+    #                     MSEAnomaly.append(torch.max(reconstruction_error).cpu().numpy())
+    #                 elif thresholdType == "MSE":
+    #                     MSEAnomaly.append((((images - outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean()).cpu().numpy())
+    #                 else:
+    #                     print("Error: thresholdType not defined")
+    #             else:
+    #                 if thresholdType == "maxPix" or thresholdType == "maxPixMSE":
+    #                     MSE.append(torch.max(reconstruction_error).cpu().numpy())
+    #                 elif thresholdType == "MSE":
+    #                     MSE.append((((images - outputs)**2).mean(axis=(1))[:,0:-10,0:-10].mean()).cpu().numpy())
+    #                 else:
+    #                     print("Error: thresholdType not defined")
+                    
+
+    #             # Predict based on threshold
+    #             # for i in range(len(reconstruction_error)):
+    #             #     thresholded = np.where(reconstruction_error[i][0:-10,0:-10].cpu().numpy() > threshold, reconstruction_error[i][0:-10,0:-10].cpu().numpy(), 0)
+    #             #     predicted = 1 if thresholded.max() > 0 else 0  # Anomaly if max value > 0, otherwise normal
+    #             #     predicted_labels.append(predicted)
+    #             if thresholdType == "maxPix" or thresholdType == "maxPixMSE":
+    #                 thresholded = np.where(reconstruction_error.cpu().numpy() > threshold, reconstruction_error.cpu().numpy(), 0)
+    #             elif thresholdType == "MSE":
+    #                 thresholded = np.where(reconstruction_error.mean().cpu().numpy() > threshold, reconstruction_error.mean().cpu().numpy(), 0)
+    #             else:
+    #                 print("Error: thresholdType not defined")
+    #             predicted = 1 if thresholded > 0 else 0  # Anomaly if max value > 0, otherwise normal
+    #             predicted_labels.append(predicted)
+
+    #     #Plot MSE Histogram with Threshold:
+    #     plt.figure(dpi=250, figsize=(12, 8))
+    #     plt.hist(MSE, bins=25, alpha=0.5, label='good')
+    #     plt.hist(MSEAnomaly, bins=25, alpha=0.5, label='Anomaly')
+    #     plt.axvline(x=threshold, color='r', linestyle='dashed', linewidth=2, label='Threshold')
+    #     plt.xlabel('Anomaly Score')
+    #     plt.ylabel('Frequency')
+    #     plt.title(f'Anomaly score Histogram with {thresholdType} Threshold')
+    #     plt.legend()
+    #     plt.grid()
+    #     if FigSavePath is not None:
+    #         os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+    #         plt.savefig(f"{FigSavePath}{ModelName}{thresholdType}.png")
+    #     if display:
+    #         plt.show()
+    #     else:
+    #         plt.close()
+
+    #     # Calculate metrics
+    #     accuracy = accuracy_score(true_labels, predicted_labels)
+    #     precision = precision_score(true_labels, predicted_labels, zero_division=0)
+    #     conf_matrix = confusion_matrix(true_labels, predicted_labels)
+    #     class_report = classification_report(true_labels, predicted_labels)
+
+    #     print(f"Accuracy: {accuracy:.4f}")
+    #     print(f"Precision: {precision:.4f}")
+    #     print("Confusion Matrix:")
+    #     print(conf_matrix)
+    #     print("Classification Report:")
+    #     print(class_report)
+
+    #     # plot the confusion matrix
+    #     plt.figure(figsize=(8,6))
+    #     sns.heatmap(
+    #         conf_matrix,
+    #         annot=True,        # draw the numbers
+    #         fmt='d',           # integer format
+    #         cmap='Blues',      # same palette
+    #         cbar=True,
+    #         xticklabels=np.unique(true_labels),
+    #         yticklabels=np.unique(true_labels)
+    #     )
+    #     plt.xlabel('Predicted label')
+    #     plt.ylabel('True label')
+    #     plt.title('Confusion Matrix')
+    #     if FigSavePath is not None:
+    #         os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+    #         plt.savefig(f"{FigSavePath}{ModelName}ConfusionMat.png")
+    #     if display:
+    #         plt.show()
+    #     else:
+    #         plt.close()
+
+    #     # Example classification report as a string
+    #     # Replace this with your actual `class_report`
+    #     class_report_dict = classification_report(true_labels, predicted_labels, output_dict=True)
+
+    #     # Convert the classification report to a DataFrame
+    #     class_report_df = pd.DataFrame(class_report_dict).transpose()
+
+    #     # Plot the table
+    #     plt.figure(figsize=(12, 6))
+    #     plt.axis("off")  # Turn off the axes
+    #     plt.title("Classification Report", fontsize=16)
+    #     table = plt.table(cellText=class_report_df.values,
+    #                     colLabels=class_report_df.columns,
+    #                     rowLabels=class_report_df.index,
+    #                     cellLoc="center",
+    #                     loc="center")
+
+    #     table.auto_set_font_size(False)
+    #     table.set_fontsize(10)
+    #     table.auto_set_column_width(col=list(range(len(class_report_df.columns))))
+
+    #     # Save the figure
+    #     if FigSavePath is not None:
+    #         os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+    #         plt.savefig(f"{FigSavePath}{ModelName}ClassReportTable.png")
+    #     if display:
+    #         plt.show()
+    #     else:
+    #         plt.close()
+
+    #     # Make ROC curve
+
+    #     return accuracy, precision, conf_matrix, class_report
 
     @staticmethod
     def get_threshold(train_loader, model):
@@ -457,5 +591,78 @@ class Trainer:
         # std_score = np.std(anomaly_scores)
         # threshold = mean_score + 3 * std_score
 
+        print(f"Threshold calculated: {threshold:.4f}, mean: {mean_score:.4f}, std: {std_score:.4f}")
+        return threshold
+    
+    @staticmethod
+    def get_maxPixelThreshold(train_loader, model):
+        """
+        Calculate the anomaly score threshold based on the Max pixel intensity in the training dataset.
+        """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        model.eval()
+
+        RECON_ERROR=[]
+        with torch.no_grad():
+            for data in train_loader:
+                data = data.cuda()
+                recon = model(data)
+                recon_error =  ((data-recon)**2).mean(axis=(1))[:,0:-10,0:-10]
+                
+                RECON_ERROR.append(np.max(recon_error.cpu().numpy()))
+
+        threshold = np.max(RECON_ERROR)
+        print(f"Threshold calculated: {threshold:.4f}")
+        return threshold
+
+
+    @staticmethod
+    def get_maxPixelMSEThreshold(train_loader, model):
+        """
+        Calculate the anomaly score threshold based on the MSE of the max pixel intensities in the training dataset.
+        """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        model.eval()
+
+        RECON_ERROR=[]
+        with torch.no_grad():
+            for data in train_loader:
+                data = data.cuda()
+                recon = model(data)
+                recon_error =  ((data-recon)**2).mean(axis=(1))[:,0:-10,0:-10]
+                
+                RECON_ERROR.append(np.max(recon_error.cpu().numpy()))
+
+        mean_score = np.mean(RECON_ERROR)
+        std_score = np.std(RECON_ERROR)
+        threshold = mean_score + 3 * std_score
+        print(f"Threshold calculated: {threshold:.4f}, mean: {mean_score:.4f}, std: {std_score:.4f}")
+        return threshold
+
+    @staticmethod
+    def get_MSEThreshold(train_loader, model):
+        """
+        Calculate the anomaly score threshold based on the MSE of the training dataset.
+        """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        model.eval()
+
+        RECON_ERROR=[]
+        with torch.no_grad():
+            for data in train_loader:
+                data = data.cuda()
+                recon = model(data)
+                data_recon_squared_mean =  ((data-recon)**2).mean(axis=(1))[:,0:-10,0:-10].mean(axis=(1,2))
+                
+                RECON_ERROR.append(data_recon_squared_mean)
+                
+        RECON_ERROR = torch.cat(RECON_ERROR).cpu().numpy()
+
+        mean_score = np.mean(RECON_ERROR)
+        std_score = np.std(RECON_ERROR)
+        threshold = mean_score + 3 * std_score
         print(f"Threshold calculated: {threshold:.4f}, mean: {mean_score:.4f}, std: {std_score:.4f}")
         return threshold
