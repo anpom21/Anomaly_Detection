@@ -4,3 +4,5 @@ carpet/*
 AD/*
 AD/
 .venv/
+*.xlsx
+!Interface/Pressure_measurements.xlsx
