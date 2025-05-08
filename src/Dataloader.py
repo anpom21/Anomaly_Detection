@@ -152,13 +152,13 @@ class Dataloader:
         Load test images and labels them as defect or normal.
         """
         test_path = self.path + path
-        images = self.load_images(self.path + "/Test", n_images)
+        images = self.load_images(test_path, n_images)
         images = self.greyscale_images(images)
         images = self.layer_images(images, n_images)
         # labels = np.concatenate((np.ones(self.n_abnormals), np.zeros(self.n_normals))) # Alternative way to create labels
         labels = self.load_labels(test_path)
 
-        assert len(images) == len(labels), "Mismatch in number of images and labels"
+        assert len(images) == len(labels), f"Mismatch in number of images: {len(images)} and labels: {len(labels)}"
 
         # Normalize and convert to tensors
         images = np.array(images) / 255.0
