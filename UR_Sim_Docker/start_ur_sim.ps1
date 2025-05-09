@@ -1,13 +1,14 @@
 # Start VcXsrv X server
 Write-Host "Starting X server (VcXsrv)..."
-Start-Process -FilePath "$env:ProgramFiles\VcXsrv\vcxsrv.exe" -ArgumentList ":0 -multiwindow -clipboard -wgl -ac"
+& "$env:ProgramFiles\VcXsrv\vcxsrv.exe" :0 -multiwindow -clipboard -wgl -ac # Runs
 
 # Wait a few seconds to ensure X server is running
 Start-Sleep -Seconds 3
 
 # Start Docker Desktop
 Write-Host "Starting Docker Desktop..."
-Start-Process -FilePath "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+#Start-Process -FilePath "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+docker desktop start # Starts docker desktop
 
 # Wait for Docker to become responsive (optional: check docker status in loop)
 Write-Host "Waiting for Docker to be ready..."

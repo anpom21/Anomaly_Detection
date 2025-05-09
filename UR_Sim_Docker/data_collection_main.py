@@ -121,7 +121,7 @@ def main():
         n_its = 1
 
     # Set the speed and acceleration for data collection
-    velocity = 0.3
+    velocity = 0.6
     acceleration = 0.5
     print(f"[INFO] Speed: {velocity} rad/s")
     print(f"[INFO]Acceleration: {acceleration} rad/s^2")
@@ -131,12 +131,30 @@ def main():
     print("[INFO] Beginning data collection")
     for i in range(n_its):
         print(f"\n[INFO] Iteration {i+1}/{n_its}")
+        change_speed = input(
+            "[PROMPT] Change speed and acceleration? (type yes to change)")
+        if change_speed.lower() == "yes":
+            velocity = input(
+                "[PROMPT] Enter new speed (rad/s): ")
+            try:
+                velocity = float(velocity)
+            except ValueError:
+                print("[ERROR] Invalid input, using default value of 0.3 rad/s")
+                velocity = 0.3
+            acceleration = input(
+                "[PROMPT] Enter new acceleration (rad/s^2): ")
+            try:
+                acceleration = float(acceleration)
+            except ValueError:
+                print("[ERROR] Invalid input, using default value of 0.5 rad/s^2")
+                acceleration = 0.5
         success = collect_sample(
             real_ur_control, camera_system, robot_positions, dataset_path, velocity, acceleration)
         if not success:
             print("[INFO] Failed to complete data collection")
             real_ur_control.disconnect()
             return False
+
     real_ur_control.disconnect()
     camera_system.ReleaseInstance()
     print("[INFO] Data collection completed successfully")

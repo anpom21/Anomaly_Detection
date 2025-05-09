@@ -15,4 +15,10 @@ ip_sim = "localhost"
 file = open(rob_pos_filename, "rb")
 robot_position = pickle.load(file)
 file.close()
+
+# Save the positions to pickle file
+with open("robot_position.pkl", "wb") as file:
+    pickle.dump(robot_position, file)
+[-5.553293172513143, 0.11027169227600098, 1.1755104064941406,
+    0.6471174955368042, -0.5075510183917444, 1.161909580230713]
 print("[INFO] Positions loaded successfully")
