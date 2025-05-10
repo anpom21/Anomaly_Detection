@@ -484,7 +484,7 @@ class robot_positions:
 def main():
 
     # Parameters
-    n_light = 4
+    n_light = 8
     light_radius = 0.35
     light_angle = 50
 
