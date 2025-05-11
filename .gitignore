@@ -1,10 +1,10 @@
-
 carpet.tar.xz
 carpet/*
 OldDataResNet50AutoEnc.pth
 *.pth
 AD/*
 AD/
+.venv/
 figures/*
 figures/
 saved_models/*
