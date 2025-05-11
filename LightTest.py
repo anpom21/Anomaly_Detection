@@ -27,11 +27,11 @@ mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (
 
 # Create a list of models to test
 models = [
-    "Autoencoder",
-    "DeeperAutoencoder",
-    "DeeperWiderAutoencoder",
-    "NarrowerAutoencoder",
-    "WiderAutoencoder",
+    # "Autoencoder",
+    # "DeeperAutoencoder",
+    # "DeeperWiderAutoencoder",
+    # "NarrowerAutoencoder",
+    # "WiderAutoencoder",
     "ResNetAutoencoder",
     # "TruelyWiderAutoencoder",
     # "HighFreqUNetAE",
@@ -40,19 +40,21 @@ models = [
 if __name__ == "__main__":
     #dataset_path = 'Datasets/Dataset004'
     dataset_path = 'Datasets/Dataset004'
-    Fig_SavePath = "LightTestFigures/"
+    Fig_SavePath = "LightTestFigures/ResNet50/"
     display = False
     
     best_model_performance = []
 
     for model_name in models:
-        i = 0 
+        #i = 0
+        i = 4 
         thresholds = []
         accuracys = []
         precisions = []
-        while i <= 24:
-            i += 4
-            
+        #while i <= 24:
+        #    i += 4
+        while i <= 12:
+            i += 1
             if i > 24:
                 break
             
@@ -115,12 +117,12 @@ if __name__ == "__main__":
             print(f"Model {model_name} loaded with {i} lightsources")
 
             # Calculate Threshold
-            Threshold = Trainer.get_threshold2(model=model, train_loader=train_loader)
+            Threshold = Trainer.get_maxPixelThreshold(model=model, train_loader=train_loader)
             thresholds.append(Threshold)
             print(f"Threshold for model {model_name} with {i} lightsources: {Threshold}")
 
             # Test the model and return the metrics
-            accuracy, precision, conf_matrix, class_report = Trainer.validate(model=model, val_loader=test_loader, threshold=Threshold, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
+            accuracy, precision, conf_matrix, class_report, ROCThresholds, roc_auc = Trainer.validate(model=model, val_loader=test_loader, threshold=Threshold, thresholdType="maxPix", FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
             accuracys.append(accuracy)
             precisions.append(precision)
         
