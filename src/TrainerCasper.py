@@ -190,7 +190,7 @@ class Trainer:
             os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
             plt.savefig(f"{FigSavePath}{ModelName}MSEhistogram.png")
 
-    def validate(model, val_loader, threshold, FigSavePath=None, ModelName=None, display=True):
+    def validate(model, val_loader, threshold, criterion = nn.MSELoss(), FigSavePath=None, ModelName=None, display=True):
         """
         Validate the model on the validation dataset.
         """
@@ -198,7 +198,7 @@ class Trainer:
         model = model.to(device)
         model.eval()
 
-        criterion = nn.MSELoss()
+        criterion 
 
         true_labels, predicted_labels = Trainer.predict_labels(model, criterion, val_loader, threshold)
 
@@ -270,7 +270,7 @@ class Trainer:
         return accuracy, precision, conf_matrix, class_report
 
     @staticmethod
-    def get_threshold(train_loader, model):
+    def get_threshold(train_loader, model, criterion):
         """
         Calculate the anomaly score threshold based on the training dataset.
         """

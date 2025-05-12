@@ -28,16 +28,20 @@ mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (
 
 # Create a list of models to test
 models = [
-    AlternativeAutoencoder,
+    AlternativeAutoencoder
     # "Autoencoder",
     # "DeeperAutoencoder",
     # "DeeperWiderAutoencoder",
     # "NarrowerAutoencoder",
-    WiderAutoencoder
-    # "ResNetAutoencoder",
+    # WiderAutoencoder
+    # ResNetAutoencoder
     # "TruelyWiderAutoencoder",
     # "HighFreqUNetAE",
 ]
+def max_loss_criterion(outputs, inputs):
+    # Calculate the maximum loss between the outputs and inputs
+    max_loss = torch.max(torch.abs(outputs - inputs))
+    return max_loss
 def get_threshold(model, criterion, train_loader, std=3):
     MSE = []
     for inputs in train_loader:
@@ -53,6 +57,7 @@ def get_threshold(model, criterion, train_loader, std=3):
 if __name__ == "__main__":
     #dataset_path = 'Datasets/Dataset004'
     dataset_path = 'Datasets/Dataset002'
+    dataset_path = 'Datasets/Dataset004'
     Fig_SavePath = "LightTestFigures/"
     display = False
     
@@ -63,7 +68,7 @@ if __name__ == "__main__":
         thresholds = []
         accuracys = []
         precisions = []
-        light_counts = [1, 2, 3, 4] # 
+        light_counts = [1, 2, 3, 4, 8, 12, 16, 20, 24] # 
         # light_counts = [4]
         model_name = model_class.__name__
         print(f"Testing {model_name}")
@@ -82,21 +87,31 @@ if __name__ == "__main__":
 
             # Train the model
             modelName =f"{model_name}_{i}"
-            model = Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=50, lr=0.001, save_path=f"savedModels/lightTest/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display, verbose = False)
-
+            # model = Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=50, lr=0.001, save_path=f"savedModels/lightTest/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display, verbose = False)
+            model.load_state_dict(torch.load(f"savedModels/lightTest/{model_name}_{i}.pth"))
+            model.to(device='cuda')
+            # Print model information and shape
+            # print(f"Model architecture for {model_name} with {i} lightsources:")
+            # print(model)
+            # print("Model parameters:")
+            # for name, param in model.named_parameters():
+            #     print(f"{name}: {param.shape}")
             # Prepare for test
             dataset = Dataloader(dataset_path)
             train_loader, val_loader, test_loader = dataset.load_train_vali_test_dataloaders_with_n_images(n_images=i, trainSplit=0.8, BS=1)
             print(f"Dataset loaded with {i} lightsources, and batch size of 1")
 
+            test_loader = dataset.load_test_dataloader(n_images=i, BS=1, path="/Test")
 
             model.eval()
-            Threshold = get_threshold(model=model, criterion=torch.nn.MSELoss(), train_loader=train_loader, std = 2)
+            criterion = max_loss_criterion # torch.nn.MSELoss()
+            # Threshold = get_threshold(model=model, criterion=torch.nn.MSELoss(), train_loader=train_loader, std = 2)
+            Threshold = get_threshold(model=model, train_loader=train_loader, criterion=criterion, std=2)
             print(f"Threshold for model {model_name} with {i} lightsources: {Threshold}")
 
             # Test the model and return the metrics
-            accuracy, precision, conf_matrix, class_report = Trainer.validate(model=model, val_loader=test_loader, threshold=Threshold, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
-            Trainer.hist(model=model, criterion=torch.nn.MSELoss(), train_loader=train_loader,test_loader=test_loader, FigSavePath=Fig_SavePath, ModelName=modelName)
+            accuracy, precision, conf_matrix, class_report = Trainer.validate(model=model, val_loader=test_loader, criterion=criterion, threshold=Threshold, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
+            Trainer.hist(model=model, criterion=criterion, train_loader=train_loader,test_loader=test_loader, FigSavePath=Fig_SavePath, ModelName=modelName)
             accuracys.append(accuracy)
             precisions.append(precision)
             thresholds.append(Threshold)
