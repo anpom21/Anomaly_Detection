@@ -40,14 +40,14 @@ models = [
 if __name__ == "__main__":
     #dataset_path = 'Datasets/Dataset004'
     dataset_path = 'Datasets/Dataset004'
-    Fig_SavePath = "LightTestFigures/ResNet50/"
+    Fig_SavePath = "LightTestFigures/ResNetAutoencoder/"
     display = False
     
     best_model_performance = []
 
     for model_name in models:
         #i = 0
-        i = 4 
+        i = 3 
         thresholds = []
         accuracys = []
         precisions = []
@@ -55,7 +55,8 @@ if __name__ == "__main__":
         #    i += 4
         while i <= 12:
             i += 1
-            if i > 24:
+            #if i > 24:
+            if i > 12:
                 break
             
             print(f"Testing {model_name} with {i} lightsources")
@@ -87,7 +88,7 @@ if __name__ == "__main__":
 
             # Train the model
             modelName =f"{model_name}_{i}"
-            #Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
+            #Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/ResNetAutoencoder/{model_name}_{i}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
 
             # Prepare for test
             dataset = Dataloader(dataset_path)
@@ -112,7 +113,7 @@ if __name__ == "__main__":
             elif model_name == "ResNetAutoencoder":
                 model = ResNetAutoencoder(channels=i)
 
-            model.load_state_dict(torch.load(f"models/Trained_models/LightTest/{model_name}_{i}.pth"))
+            model.load_state_dict(torch.load(f"models/Trained_models/LightTest/ResNetAutoencoder/{model_name}_{i}.pth"))
             model.eval()
             print(f"Model {model_name} loaded with {i} lightsources")
 
@@ -128,9 +129,12 @@ if __name__ == "__main__":
         
         # Plot the results
         plt.figure(figsize=(10, 5))
-        plt.plot(range(4, 25, 4), thresholds, marker='o', label='Threshold')
-        plt.plot(range(4, 25, 4), accuracys, marker='o', label='Accuracy')
-        plt.plot(range(4, 25, 4), precisions, marker='o', label='Precision')
+        #plt.plot(range(4, 25, 4), thresholds, marker='o', label='Threshold')
+        plt.plot(range(4, 13, 1), thresholds, marker='o', label='Threshold')
+        #plt.plot(range(4, 25, 4), accuracys, marker='o', label='Accuracy')
+        plt.plot(range(4, 13, 1), accuracys, marker='o', label='Accuracy')
+        #plt.plot(range(4, 25, 4), precisions, marker='o', label='Precision')
+        plt.plot(range(4, 13, 1), precisions, marker='o', label='Precision')
         plt.title('Threshold, Accuracy and Precision vs Number of Lightsources')
         plt.xlabel('Number of Lightsources')
         plt.ylabel('Value')
