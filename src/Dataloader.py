@@ -194,7 +194,7 @@ class Dataloader:
         
         
 if __name__ == '__main__':
-    preprocess = Dataloader(path='Datasets/Dataset004')
+    preprocess = Dataloader(path='Datasets/IRL_4_channel_dataset')
     train_loader, vali_loader, test_loader = preprocess.load_train_vali_test_dataloaders_with_n_images(n_images=4, trainSplit=0.8, BS=16)
 
     # print('Train loader:', train_loader.dataset.dataset.shape)
