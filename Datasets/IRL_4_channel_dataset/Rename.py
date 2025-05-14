@@ -1,7 +1,7 @@
 import os
 
 # Define the directory containing the files
-directory = r"Datasets/IRL_4_channel_dataset/Test/"
+directory = r"Datasets/IRL_4_channel_dataset/Test_Small_defects/"
 
 # Ensure the directory exists
 if not os.path.exists(directory):

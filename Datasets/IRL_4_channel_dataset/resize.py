@@ -2,7 +2,7 @@ import os
 from PIL import Image
 
 # Path to the "Train" directory
-train_dir = r"Datasets/IRL_4_channel_dataset/Train/"
+train_dir = r"Datasets/IRL_4_channel_dataset/Test_Small_defects/"
 
 # Target size for resizing
 target_size = (224, 224)
