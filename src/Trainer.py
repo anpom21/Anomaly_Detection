@@ -229,6 +229,57 @@ class Trainer:
     #     print(class_report)
 
     #     return accuracy, precision, conf_matrix, class_report
+
+    def compare_images(model, test_loader, threshold, channels, thresholdType=None, FigSavePath=None, ModelName=None, display=True):
+        """
+        Compare the original and reconstructed images, and plot the reconstruction error.
+        """
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        model = model.to(device)
+        model.eval()
+
+        image_id = 0
+
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images = images.to(device).float()
+                labels = labels.cpu().numpy()
+
+                # Forward pass
+                outputs = model(images)
+                # per-pixel error map, cropping off last 10 pixels
+                reconstruction_error = ((images - outputs)**2).mean(dim=1)[:, :-10, :-10]
+
+                pred = 0
+
+                for i, lbl in enumerate(labels):
+                    err_map = reconstruction_error[i].cpu().numpy()
+                    # Thresholding
+                    # if thresholdType in ("maxPix", "maxPixMSE"):
+                    thresholded = np.where(err_map > threshold, err_map, 0)
+                    # else:  # "MSE"
+                    #     thresholded = np.where(err_map.mean() > threshold, err_map.mean(), 0)
+                    pred = 1 if thresholded.max() > 0 else 0  # Anomaly if max value > 0, otherwise normal
+                    # plotting
+                    fig, ax = plt.subplots(1, channels + 1, figsize=(15, 5))
+                    for j in range(channels):
+                        ax[j].imshow(images[i][j].cpu().numpy(), cmap='gray')
+                        ax[j].set_title(f"Original Image {j+1}")
+                        ax[j].axis('off')
+                    ax[channels].imshow(thresholded, cmap='hot')
+                    ax[channels].set_title(f"Reconstruction Error (Thresholded)")
+                    ax[channels].axis('off')
+                    plt.suptitle(f"Label: {lbl}, Prediction: {pred}", fontsize=16)
+                    if FigSavePath:
+                        os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)
+                        plt.savefig(f"{FigSavePath}{ModelName}_label{lbl}Pred{pred}_comparison{image_id:04d}.png")
+                    if display:
+                        plt.show()
+                    else:
+                        plt.close()
+                    image_id += 1
+
+                
     
     def validate(model, val_loader, threshold, thresholdType=None, FigSavePath=None, ModelName=None, display=True):
         """

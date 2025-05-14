@@ -37,6 +37,8 @@ class Dataloader:
         greyscale_images = []
         for image in images:
             greyscale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # Resize the image to the desired dimensions
+            greyscale_image = cv2.resize(greyscale_image, (self.width, self.height))
             greyscale_images.append(greyscale_image)
         return greyscale_images
     

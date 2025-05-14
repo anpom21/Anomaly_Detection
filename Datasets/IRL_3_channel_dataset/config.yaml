@@ -1,0 +1,6 @@
+n_samples: 150
+n_lights: 3
+flat_light: false
+image_shape: [224, 224]
+n_abnormals: 100
+n_normals: 50
