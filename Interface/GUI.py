@@ -2,7 +2,7 @@ import sys
 import os
 import random
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QFont
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QTabWidget,
     QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
@@ -65,6 +65,10 @@ class MainWindow(QMainWindow):
         # Central tabs
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
+        # Increase tab size via tab bar stylesheet
+        self.tabs.setStyleSheet(
+            "QTabBar::tab { padding: 12px 16px; font-size: 16pt; min-width: 120px; min-height: 40px; }"
+        )
 
         # Three tabs
         self.home_tab = QWidget()
@@ -90,47 +94,116 @@ class MainWindow(QMainWindow):
         # Tab change signal
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
+    # def _setup_home(self):
+    #     layout = QVBoxLayout()
+        
+    #     # Resistance input
+    #     h1 = QHBoxLayout()
+    #     h1.addWidget(QLabel("Desired Resistance (kg):"))
+    #     self.res_input = QLineEdit()
+    #     h1.addWidget(self.res_input)
+    #     layout.addLayout(h1)
+    #     # PSI output
+    #     h2 = QHBoxLayout()
+    #     h2.addWidget(QLabel("Set PSI (calculated):"))
+    #     self.psi_out = QLineEdit()
+    #     self.psi_out.setReadOnly(True)
+    #     h2.addWidget(self.psi_out)
+    #     layout.addLayout(h2)
+    #     # Bar output
+    #     h3 = QHBoxLayout()
+    #     h3.addWidget(QLabel("Set Bar (calculated):"))
+    #     self.bar_out = QLineEdit()
+    #     self.bar_out.setReadOnly(True)
+    #     h3.addWidget(self.bar_out)
+    #     layout.addLayout(h3)
+    #     # BPM output
+    #     h4 = QHBoxLayout()
+    #     h4.addWidget(QLabel("Current BPM:"))
+    #     self.bpm_out = QLineEdit()
+    #     self.bpm_out.setReadOnly(True)
+    #     h4.addWidget(self.bpm_out)
+    #     layout.addLayout(h4)
+    #     # Buttons
+    #     btns = QHBoxLayout()
+    #     btns.addStretch()
+    #     btns.addWidget(self._btn("Reset", lambda: self._reset_home()))
+    #     btns.addWidget(self._btn("Close", self.close))
+    #     layout.addLayout(btns)
+    #     self.home_tab.setLayout(layout)
+
+    #     # Signals
+    #     self.res_input.editingFinished.connect(self._update_psi)
+    #     self.res_input.editingFinished.connect(self._update_bar)
+    #     # BPM update timer
+    #     QTimer(self, timeout=self._update_bpm, interval=1000).start()
     def _setup_home(self):
         layout = QVBoxLayout()
-        # Resistance input
-        h1 = QHBoxLayout()
-        h1.addWidget(QLabel("Desired Resistance (kg):"))
+
+        # Create a shared font
+        font = QFont()
+        font.setPointSize(20)   # bump this up as you like
+
+        # Row factory to avoid repetition
+        def make_row(label_text, widget, max_width=400):
+            h = QHBoxLayout()
+            h.setAlignment(Qt.AlignCenter)  # center the whole row
+            lbl = QLabel(label_text)
+            lbl.setFont(font)
+            lbl.setMaximumWidth(max_width)
+            lbl.setAlignment(Qt.AlignCenter)
+            widget.setFont(font)
+            widget.setMaximumWidth(max_width)
+            widget.setAlignment(Qt.AlignCenter)
+            # stretch-widget-stretch
+            h.addStretch(1)
+            h.addWidget(lbl)
+            h.addSpacing(10)
+            h.addWidget(widget)
+            h.addStretch(1)
+            return h
+
+        # Desired Resistance
         self.res_input = QLineEdit()
-        h1.addWidget(self.res_input)
-        layout.addLayout(h1)
+        self.res_input.setObjectName("resInput")   # ← give it a unique ID
+        layout.addLayout(make_row("Desired Resistance (kg):", self.res_input))
+
         # PSI output
-        h2 = QHBoxLayout()
-        h2.addWidget(QLabel("Set PSI (calculated):"))
         self.psi_out = QLineEdit()
         self.psi_out.setReadOnly(True)
-        h2.addWidget(self.psi_out)
-        layout.addLayout(h2)
+        layout.addLayout(make_row("Set PSI (calculated):", self.psi_out))
+
         # Bar output
-        h3 = QHBoxLayout()
-        h3.addWidget(QLabel("Set Bar (calculated):"))
         self.bar_out = QLineEdit()
         self.bar_out.setReadOnly(True)
-        h3.addWidget(self.bar_out)
-        layout.addLayout(h3)
+        layout.addLayout(make_row("Set Bar (calculated):", self.bar_out))
+
         # BPM output
-        h4 = QHBoxLayout()
-        h4.addWidget(QLabel("Current BPM:"))
         self.bpm_out = QLineEdit()
         self.bpm_out.setReadOnly(True)
-        h4.addWidget(self.bpm_out)
-        layout.addLayout(h4)
-        # Buttons
+        layout.addLayout(make_row("Current BPM:", self.bpm_out))
+
+        # Buttons on the right, but still centered vertically
         btns = QHBoxLayout()
-        btns.addStretch()
-        btns.addWidget(self._btn("Reset", lambda: self._reset_home()))
-        btns.addWidget(self._btn("Close", self.close))
+        btns.addStretch(1)
+        reset = QPushButton("Reset")
+        close = QPushButton("Close")
+        for btn in (reset, close):
+            btn.setFont(font)
+            btn.setMaximumWidth(100)
+        reset.clicked.connect(self._reset_home)
+        close.clicked.connect(self.close)
+        btns.addWidget(reset)
+        btns.addWidget(close)
+        btns.addStretch(1)
         layout.addLayout(btns)
+
         self.home_tab.setLayout(layout)
 
-        # Signals
+        # reconnect signals if you’d like
         self.res_input.editingFinished.connect(self._update_psi)
         self.res_input.editingFinished.connect(self._update_bar)
-        # BPM update timer
+
         QTimer(self, timeout=self._update_bpm, interval=1000).start()
 
     def _btn(self, text, slot):
@@ -162,17 +235,38 @@ class MainWindow(QMainWindow):
         self.bpm_out.clear()
 
     def _setup_plot(self):
+        font = QFont(); font.setPointSize(14)
         layout = QVBoxLayout()
-        self.figure = Figure(figsize=(5, 3))
+        self.figure = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.figure)
-        layout.addWidget(self.canvas)
-        layout.addWidget(QLabel("Current BPM:"))
-        self.plot_bpm = QLineEdit()
-        self.plot_bpm.setReadOnly(True)
-        layout.addWidget(self.plot_bpm)
+        layout.addWidget(self.canvas, stretch=4)
+
+        # Align label and input on same line
+        row = QHBoxLayout(); row.setAlignment(Qt.AlignCenter); row.setSpacing(10)
+        lbl = QLabel("Current BPM:"); lbl.setFont(font)
+        self.plot_bpm = QLineEdit(); self.plot_bpm.setReadOnly(True)
+        self.plot_bpm.setFont(font); self.plot_bpm.setAlignment(Qt.AlignCenter); self.plot_bpm.setMaximumWidth(200)
+        row.addStretch(1); row.addWidget(lbl); row.addWidget(self.plot_bpm); row.addStretch(1)
+        layout.addLayout(row)
+
         self.plot_tab.setLayout(layout)
-        # Data & timer
         self._plot_data = []
+
+        # Buttons on the right, but still centered vertically
+        btns = QHBoxLayout()
+        btns.addStretch(1)
+        reset = QPushButton("Reset")
+        close = QPushButton("Close")
+        for btn in (reset, close):
+            btn.setFont(font)
+            btn.setMaximumWidth(100)
+        reset.clicked.connect(self._reset_plot)
+        close.clicked.connect(self.close)
+        btns.addWidget(reset)
+        btns.addWidget(close)
+        btns.addStretch(1)
+        layout.addLayout(btns)
+
         QTimer(self, timeout=self._update_plot, interval=1000).start()
 
     def _update_plot(self):
@@ -187,6 +281,11 @@ class MainWindow(QMainWindow):
         ax.set_title("BPM Over Time")
         ax.set_ylabel("BPM")
         ax.set_xlabel("Seconds")
+        self.canvas.draw()
+    
+    def _reset_plot(self):
+        self._plot_data.clear()
+        self.figure.clear()
         self.canvas.draw()
 
     def _setup_game(self):
@@ -276,17 +375,30 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # Dark-blue style
     app.setStyleSheet("""
-        QMainWindow, QWidget {background-color:#00008B;color:white;}
-        QTabWidget::pane{background:#00008B;}
-        QTabBar::tab{background:#00008B;color:white;padding:8px;}
-        QTabBar::tab:selected{background:#000060;}
-        QLineEdit, QLabel{background:#00008B;color:white;border:1px solid #FFF;}
-        QPushButton{background:#000060;color:white;border-radius:4px;padding:6px 12px;}
-        QPushButton:hover{background:#000080;}
-    """
-                      )
+    QMainWindow, QWidget { background-color: #00008B; color: white; }
+    QTabWidget::pane { background: #00008B; }
+    QTabBar::tab { background: #00008B; color: white; padding: 8px; }
+    QTabBar::tab:selected { background: #000060; }
+
+    /* Other labels and inputs: no border */
+    QLineEdit { border: none; background-color: #00008B; color: white; }
+    QLabel   { border: none; background-color: #00008B; color: white; }
+
+    /* Only the resistance-input gets the white outline */
+    QLineEdit#resInput {
+        border: 1px solid #FFF;
+        padding: 4px;
+    }
+
+    QPushButton {
+        background: #000060;
+        color: white;
+        border-radius: 4px;
+        padding: 6px 12px;
+    }
+    QPushButton:hover { background: #000080; }
+    """)
     
     # Start heart rate stream
     start_heart_rate_stream()
