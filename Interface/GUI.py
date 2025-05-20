@@ -2,12 +2,14 @@ import sys
 import os
 import random
 from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QTabWidget,
     QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
 )
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import numpy as np
 from Game.flappy_bird import run_game
 
 # Import our game module
@@ -25,17 +27,40 @@ def calculate_psi(resistance_kg):
     1 kgf/cm^2 ≈ 14.2233 psi.
     """
     try:
-        return resistance_kg * 14.2233
+        N = resistance_kg * 9.81  # Convert kg to Newtons
+        d = 63.0 # Diameter in mm
+        dm = d / 1000.0 # Diameter in m
+        A = (np.pi * dm**2) / 4 # Area in m^2
+        return N/(A*6894.76) # Convert to psi
+        #return resistance_kg * 14.2233
     except Exception:
         return 0.0
 
+def calculate_bar(resistance_kg):
+    """
+    Convert desired resistance in kg to bar.
+    1 kgf/cm^2 ≈ 0.980665 bar.
+    """
+    d = 63.0 # Diameter in mm
+    dm = d / 1000.0 # Diameter in m
+    try:
+        #return resistance_kg * 14.2233
+        N = resistance_kg * 9.81  # Convert kg to Newtons
+        A = (np.pi * dm**2) / 4 # Area in m^2
+        return N / (A * 10**5) # Convert to bar
+    except Exception:
+        return 0.0
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Resistance-Piston Controller")
-        self.resize(800, 600)
+        #self.resize(800, 600)
+        # Resize to native screen resolution
+        screen = QGuiApplication.primaryScreen()
+        rect = screen.availableGeometry()
+        self.setGeometry(rect)
 
         # Central tabs
         self.tabs = QTabWidget()
@@ -45,15 +70,18 @@ class MainWindow(QMainWindow):
         self.home_tab = QWidget()
         self.plot_tab = QWidget()
         self.game_tab = QWidget()
+        self.stats_tab = QWidget()
 
         self.tabs.addTab(self.home_tab, "Home")
         self.tabs.addTab(self.plot_tab, "Plot")
         self.tabs.addTab(self.game_tab, "Game")
+        self.tabs.addTab(self.stats_tab, "Performance")
 
         # Setup each tab
         self._setup_home()
         self._setup_plot()
         self._setup_game()
+        self._setup_stats()
 
         # PygameGame instance and timer
         self.game = None
@@ -77,13 +105,20 @@ class MainWindow(QMainWindow):
         self.psi_out.setReadOnly(True)
         h2.addWidget(self.psi_out)
         layout.addLayout(h2)
-        # BPM output
+        # Bar output
         h3 = QHBoxLayout()
-        h3.addWidget(QLabel("Current BPM:"))
+        h3.addWidget(QLabel("Set Bar (calculated):"))
+        self.bar_out = QLineEdit()
+        self.bar_out.setReadOnly(True)
+        h3.addWidget(self.bar_out)
+        layout.addLayout(h3)
+        # BPM output
+        h4 = QHBoxLayout()
+        h4.addWidget(QLabel("Current BPM:"))
         self.bpm_out = QLineEdit()
         self.bpm_out.setReadOnly(True)
-        h3.addWidget(self.bpm_out)
-        layout.addLayout(h3)
+        h4.addWidget(self.bpm_out)
+        layout.addLayout(h4)
         # Buttons
         btns = QHBoxLayout()
         btns.addStretch()
@@ -94,6 +129,7 @@ class MainWindow(QMainWindow):
 
         # Signals
         self.res_input.editingFinished.connect(self._update_psi)
+        self.res_input.editingFinished.connect(self._update_bar)
         # BPM update timer
         QTimer(self, timeout=self._update_bpm, interval=1000).start()
 
@@ -109,12 +145,20 @@ class MainWindow(QMainWindow):
             kg = 0.0
         self.psi_out.setText(f"{calculate_psi(kg):.2f}")
 
+    def _update_bar(self):
+        try:
+            kg = float(self.res_input.text())
+        except ValueError:
+            kg = 0.0
+        self.bar_out.setText(f"{calculate_bar(kg):.2f}")
+
     def _update_bpm(self):
         self.bpm_out.setText(str(read_bpm.bpm_data))
 
     def _reset_home(self):
         self.res_input.clear()
         self.psi_out.clear()
+        self.bar_out.clear()
         self.bpm_out.clear()
 
     def _setup_plot(self):
@@ -132,7 +176,7 @@ class MainWindow(QMainWindow):
         QTimer(self, timeout=self._update_plot, interval=1000).start()
 
     def _update_plot(self):
-        bpm = get_bpm()
+        bpm = read_bpm.bpm_data
         self.plot_bpm.setText(str(bpm))
         self._plot_data.append(bpm)
         if len(self._plot_data) > 20:
@@ -152,6 +196,49 @@ class MainWindow(QMainWindow):
         self.game_widget.setMinimumSize(400, 300)
         layout.addWidget(self.game_widget)
         self.game_tab.setLayout(layout)
+
+    def _setup_stats(self):
+        layout = QVBoxLayout()
+        self.stats_fig = Figure(figsize=(6, 4))
+        self.stats_canvas = FigureCanvas(self.stats_fig)
+        layout.addWidget(self.stats_canvas)
+
+        self.stats_velocity_data = []
+        self.stats_power_data = []
+
+        QTimer(self, timeout=self._update_stats, interval=1000).start()
+
+        self.stats_tab.setLayout(layout)
+
+    def _update_stats(self):
+        velocity = random.uniform(0, 5)
+        try:
+            kg = float(self.res_input.text())
+        except ValueError:
+            kg = 0.0
+        force = kg * 9.81
+        power = velocity * force
+
+        self.stats_velocity_data.append(velocity)
+        self.stats_power_data.append(power)
+        if len(self.stats_velocity_data) > 20:
+            self.stats_velocity_data.pop(0)
+            self.stats_power_data.pop(0)
+
+        self.stats_fig.clear()
+        ax1 = self.stats_fig.add_subplot(211)
+        ax2 = self.stats_fig.add_subplot(212)
+
+        ax1.plot(self.stats_velocity_data)
+        ax1.set_title("Velocity (m/s)")
+        ax1.set_ylabel("m/s")
+
+        ax2.plot(self.stats_power_data)
+        ax2.set_title("Power Output (W)")
+        ax2.set_ylabel("W")
+        ax2.set_xlabel("Time (s)")
+
+        self.stats_canvas.draw()
 
     def _on_tab_changed(self, idx):
         if idx == 2:
@@ -205,5 +292,6 @@ if __name__ == '__main__':
     start_heart_rate_stream()
 
     win = MainWindow()
-    win.show()
+    #win.show()
+    win.showFullScreen()
     sys.exit(app.exec())
