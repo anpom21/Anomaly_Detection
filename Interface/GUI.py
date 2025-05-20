@@ -12,6 +12,9 @@ from Game.flappy_bird import run_game
 
 # Import our game module
 from Game.Flappy_bird_game import PygameGame
+import Game.read_bpm as read_bpm
+from Game.read_bpm import start_heart_rate_stream
+
 
 # Placeholder functions for PSI calculation and BPM reading
 
@@ -26,13 +29,6 @@ def calculate_psi(resistance_kg):
     except Exception:
         return 0.0
 
-
-def get_bpm():
-    """
-    Simulate reading BPM from a sensor or function.
-    Replace with actual implementation.
-    """
-    return random.randint(60, 100)
 
 
 class MainWindow(QMainWindow):
@@ -114,7 +110,7 @@ class MainWindow(QMainWindow):
         self.psi_out.setText(f"{calculate_psi(kg):.2f}")
 
     def _update_bpm(self):
-        self.bpm_out.setText(str(get_bpm()))
+        self.bpm_out.setText(str(read_bpm.bpm_data))
 
     def _reset_home(self):
         self.res_input.clear()
@@ -204,6 +200,10 @@ if __name__ == '__main__':
         QPushButton:hover{background:#000080;}
     """
                       )
+    
+    # Start heart rate stream
+    start_heart_rate_stream()
+
     win = MainWindow()
     win.show()
     sys.exit(app.exec())
