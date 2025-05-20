@@ -23,12 +23,17 @@ from Potentiometer_read.serial_read_MR_together import SerialReaderThread
 
 # Placeholder functions for PSI calculation and BPM reading
 
-def Get_Velocity():
+def Get_Velocity(Thread):
     """
     Placeholder function to get velocity.
     Replace with actual implementation.
     """
-    return random.uniform(0, 5)  # Random velocity for demonstration
+    try:
+        # Get velocity from the thread
+        velocity = Thread.get_velocity()
+    except Exception as e:
+        print(f"Error getting velocity: {e}")
+        return 0.0
 
 def calculate_psi(resistance_kg):
     """
@@ -64,6 +69,13 @@ def calculate_bar(resistance_kg):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        try:
+            self.thread = SerialReaderThread('COM3', 9600)  # Adjust COM port and baud rate as needed
+            self.thread.start()
+        except Exception as e:
+            print(f"Error starting serial thread: {e}")
+            self.thread = None
+
         self.setWindowTitle("Resistance-Piston Controller")
         #self.resize(800, 600)
         # Resize to native screen resolution
@@ -103,49 +115,6 @@ class MainWindow(QMainWindow):
         # Tab change signal
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
-    # def _setup_home(self):
-    #     layout = QVBoxLayout()
-        
-    #     # Resistance input
-    #     h1 = QHBoxLayout()
-    #     h1.addWidget(QLabel("Desired Resistance (kg):"))
-    #     self.res_input = QLineEdit()
-    #     h1.addWidget(self.res_input)
-    #     layout.addLayout(h1)
-    #     # PSI output
-    #     h2 = QHBoxLayout()
-    #     h2.addWidget(QLabel("Set PSI (calculated):"))
-    #     self.psi_out = QLineEdit()
-    #     self.psi_out.setReadOnly(True)
-    #     h2.addWidget(self.psi_out)
-    #     layout.addLayout(h2)
-    #     # Bar output
-    #     h3 = QHBoxLayout()
-    #     h3.addWidget(QLabel("Set Bar (calculated):"))
-    #     self.bar_out = QLineEdit()
-    #     self.bar_out.setReadOnly(True)
-    #     h3.addWidget(self.bar_out)
-    #     layout.addLayout(h3)
-    #     # BPM output
-    #     h4 = QHBoxLayout()
-    #     h4.addWidget(QLabel("Current BPM:"))
-    #     self.bpm_out = QLineEdit()
-    #     self.bpm_out.setReadOnly(True)
-    #     h4.addWidget(self.bpm_out)
-    #     layout.addLayout(h4)
-    #     # Buttons
-    #     btns = QHBoxLayout()
-    #     btns.addStretch()
-    #     btns.addWidget(self._btn("Reset", lambda: self._reset_home()))
-    #     btns.addWidget(self._btn("Close", self.close))
-    #     layout.addLayout(btns)
-    #     self.home_tab.setLayout(layout)
-
-    #     # Signals
-    #     self.res_input.editingFinished.connect(self._update_psi)
-    #     self.res_input.editingFinished.connect(self._update_bar)
-    #     # BPM update timer
-    #     QTimer(self, timeout=self._update_bpm, interval=1000).start()
     def _setup_home(self):
         layout = QVBoxLayout()
 
@@ -339,7 +308,7 @@ class MainWindow(QMainWindow):
         self.stats_tab.setLayout(layout)
 
     def _update_stats(self):
-        velocity = Get_Velocity()
+        velocity = Get_Velocity(self.thread)
         try:
             kg = float(self.res_input.text())
         except ValueError:
