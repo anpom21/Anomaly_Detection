@@ -17,9 +17,18 @@ from Game.Flappy_bird_game import PygameGame
 import Game.read_bpm as read_bpm
 from Game.read_bpm import start_heart_rate_stream
 
+# Import module for reading potentiometer
+from Potentiometer_read.serial_read_MR_together import SerialReaderThread
+
 
 # Placeholder functions for PSI calculation and BPM reading
 
+def Get_Velocity():
+    """
+    Placeholder function to get velocity.
+    Replace with actual implementation.
+    """
+    return random.uniform(0, 5)  # Random velocity for demonstration
 
 def calculate_psi(resistance_kg):
     """
@@ -297,20 +306,40 @@ class MainWindow(QMainWindow):
         self.game_tab.setLayout(layout)
 
     def _setup_stats(self):
+        font = QFont(); font.setPointSize(14)
         layout = QVBoxLayout()
+
+        # Stats plot canvas
         self.stats_fig = Figure(figsize=(6, 4))
         self.stats_canvas = FigureCanvas(self.stats_fig)
-        layout.addWidget(self.stats_canvas)
+        layout.addWidget(self.stats_canvas, stretch=4)
 
+        # Initialize data lists
         self.stats_velocity_data = []
         self.stats_power_data = []
 
+         # Buttons on the right, but still centered vertically
+        btns = QHBoxLayout()
+        btns.addStretch(1)
+        reset = QPushButton("Reset")
+        close = QPushButton("Close")
+        for btn in (reset, close):
+            btn.setFont(font)
+            btn.setMaximumWidth(100)
+        reset.clicked.connect(self._reset_stats)
+        close.clicked.connect(self.close)
+        btns.addWidget(reset)
+        btns.addWidget(close)
+        btns.addStretch(1)
+        layout.addLayout(btns)
+
+        # Timer to update stats
         QTimer(self, timeout=self._update_stats, interval=1000).start()
 
         self.stats_tab.setLayout(layout)
 
     def _update_stats(self):
-        velocity = random.uniform(0, 5)
+        velocity = Get_Velocity()
         try:
             kg = float(self.res_input.text())
         except ValueError:
@@ -327,16 +356,20 @@ class MainWindow(QMainWindow):
         self.stats_fig.clear()
         ax1 = self.stats_fig.add_subplot(211)
         ax2 = self.stats_fig.add_subplot(212)
-
         ax1.plot(self.stats_velocity_data)
         ax1.set_title("Velocity (m/s)")
         ax1.set_ylabel("m/s")
-
         ax2.plot(self.stats_power_data)
         ax2.set_title("Power Output (W)")
         ax2.set_ylabel("W")
         ax2.set_xlabel("Time (s)")
+        self.stats_canvas.draw()
 
+    def _reset_stats(self):
+        # Clear data and reset canvas
+        self.stats_velocity_data.clear()
+        self.stats_power_data.clear()
+        self.stats_fig.clear()
         self.stats_canvas.draw()
 
     def _on_tab_changed(self, idx):
