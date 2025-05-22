@@ -5,14 +5,16 @@ import pygame
 import random
 import sys
 import time
-from read_bpm import start_heart_rate_stream, bpm_data
-import read_bpm
+from Game.read_bpm import start_heart_rate_stream, bpm_data
+import Game.read_bpm
 import yaml
+import os
 
 # ---------------------------------------------------------------------------- #
 #                                   Functions                                  #
 # ---------------------------------------------------------------------------- #
 clock = pygame.time.Clock()
+working_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
@@ -53,30 +55,28 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
     start_zone = pygame.Rect(40, 150, 300, 30)
     bird_velocity = 0
     # Load gameover image
-    gameover_img = pygame.image.load("Game/game_over.png").convert_alpha()
+    gameover_img = pygame.image.load(os.path.join(working_directory, "game_over.png")).convert_alpha()
     gameover_img = pygame.transform.scale(gameover_img, (186, 110))
     gameover_pos = (screen.get_width() // 2 - 100, 10)
 
-    score_bacground_img = pygame.image.load(
-        "Game/score_background.png").convert_alpha()
-    score_bacground_img = pygame.transform.scale(
-        score_bacground_img, (186, 110))
+    score_bacground_img = pygame.image.load(os.path.join(working_directory, "score_background.png")).convert_alpha()
+    score_bacground_img = pygame.transform.scale(score_bacground_img, (186, 110))
     # Shape of the score background
 
     # Load or initialize high score
     try:
-        with open("Game/high_score.yaml", "r") as file:
+        with open(os.path.join(working_directory, "high_score.yaml"), "r") as file:
             high_score = yaml.safe_load(file) or 0
     except FileNotFoundError:
         high_score = 0
         # Create the file if it doesn't exist
-        with open("Game/high_score.yaml", "w") as file:
+        with open(os.path.join(working_directory, "high_score.yaml"), "w") as file:
             yaml.dump(high_score, file)
 
     # Update high score if needed
     if score > high_score:
         high_score = score
-        with open("Game/high_score.yaml", "w") as file:
+        with open(os.path.join(working_directory, "high_score.yaml"), "w") as file:
             yaml.dump(high_score, file)
 
     # Game over loop
@@ -134,7 +134,7 @@ def bpm_to_speed(bpm):
     # Min speed 3.0
 
     speed_scaling = 1
-    delta_bpm = read_bpm.initial_bpm - bpm
+    delta_bpm = Game.read_bpm.initial_bpm - bpm
     speed = 4.0 + delta_bpm * speed_scaling
 
     # Ensure speed is within bounds
@@ -191,7 +191,7 @@ def run_game():
 
     # Background setup
     background_width = 587
-    background_img = pygame.image.load("Game/background_looping.png").convert()
+    background_img = pygame.image.load(os.path.join(working_directory, "background_looping.png")).convert()
     background_img = pygame.transform.scale(
         background_img, (background_width, HEIGHT))  # 587x600
     background_start_x = 0
@@ -202,7 +202,7 @@ def run_game():
     bird_speed = 4
     bird_width = 35
     bird_height = 35
-    drone_img = pygame.image.load("Game/drone_white.png").convert_alpha()
+    drone_img = pygame.image.load(os.path.join(working_directory, "drone_white.png")).convert_alpha()
     # Scale the image to fit the bird size
     drone_img = pygame.transform.scale(drone_img, (bird_width, bird_height))
     bird_rect = pygame.Rect(50, HEIGHT // 2, bird_width, bird_height)
@@ -213,7 +213,7 @@ def run_game():
     pipe_height = random.randint(150, 450)
     pipe_x = WIDTH
     pipe_speed = 3
-    laser_img = pygame.image.load("Game/laser4.png").convert_alpha()
+    laser_img = pygame.image.load(os.path.join(working_directory, "laser4.png")).convert_alpha()
     laser_width, laser_height = laser_img.get_size()
     top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
     bottom_pipe = pygame.Rect(
@@ -266,7 +266,7 @@ def run_game():
             pipe_x = WIDTH-pipe_width
 
         # Adjust pipe speed based on heart rate
-        pipe_x -= bpm_to_speed(read_bpm.bpm_data)
+        pipe_x -= bpm_to_speed(Game.read_bpm.bpm_data)
         if pipe_x < -pipe_width:
             pipe_x = WIDTH
             pipe_height = random.randint(150, 450)
@@ -314,7 +314,7 @@ def run_game():
         # ------------------------------- Score display ------------------------------ #
         score_text = font.render(str(score), True, (255, 255, 255))
         heart_rate_text = font.render(
-            str(read_bpm.bpm_data), True, (255, 0, 0))
+            str(Game.read_bpm.bpm_data), True, (255, 0, 0))
         screen.blit(heart_rate_text, (10, 10))
         screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 20))
 
