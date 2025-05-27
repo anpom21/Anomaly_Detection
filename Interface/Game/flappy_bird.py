@@ -5,8 +5,8 @@ import pygame
 import random
 import sys
 import time
-from read_bpm import start_heart_rate_stream, bpm_data
-import read_bpm
+from Game.read_bpm import start_heart_rate_stream, bpm_data
+import Game.read_bpm
 import yaml
 import os
 
@@ -15,7 +15,7 @@ import os
 # ---------------------------------------------------------------------------- #
 clock = pygame.time.Clock()
 working_directory = os.path.dirname(os.path.abspath(__file__))
-scaling = 1.5
+scaling = 2
 
 
 def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
@@ -54,6 +54,10 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
 def game_over(bird_rect, score, drone_img, screen, font, background_img, background_x, clock):
     # Define start zone as restart trigger
     start_zone = pygame.Rect(40*scaling, 150*scaling, 300*scaling, 30*scaling)
+
+    green_box = pygame.Rect(
+        40*scaling, 300*scaling, 30*scaling, 30*scaling)
+    green_box_color = (0, 255, 0, 50)  # Green color for the box
     bird_velocity = 0
     # Load gameover image
     gameover_img = pygame.image.load(os.path.join(
@@ -98,8 +102,9 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
         # Move bird so it can "fly into" start zone to restart
         bird_velocity = update_bird_velocity(bird_velocity, keys)
         bird_rect.y += bird_velocity
-        if bird_rect.y > 900 * scaling:
+        if bird_rect.y > 300 * scaling:
             first_run = False
+
         # Check if player wants to restart
         if bird_rect.colliderect(start_zone) and not first_run:
             return bird_rect, background_x  # Reset to caller with new position
@@ -109,29 +114,31 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
         screen.blit(background_img, (background_x + 587*scaling, 0))
         screen.blit(drone_img, bird_rect)
 
-        pygame.draw.rect(screen, (255, 0, 0), start_zone)
         font = pygame.font.SysFont(None, int(48*scaling))
         restart_text = font.render(
             "Fly Here to Restart", True, (255, 255, 255))
-        screen.blit(restart_text, (start_zone.centerx - restart_text.get_width() // 2,
-                                   start_zone.centery - restart_text.get_height() // 2))
 
         screen.blit(gameover_img, (screen.get_width() //
                     2-186*scaling//2, 10*scaling))
         # --- Score display --- #
         font = pygame.font.SysFont(None, int(35*scaling))
+        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+        high_score_text = font.render(
+            f"High Score: {high_score}", True, (255, 255, 255))
         screen.blit(score_bacground_img,
                     (screen.get_width() // 2-186*scaling//2, 200*scaling))
 
         # Score
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
         screen.blit(score_text, (screen.get_width() //
                     2 - score_text.get_width() // 2, 215*scaling))
         # High score
-        high_score_text = font.render(
-            f"High Score: {high_score}", True, (255, 255, 255))
         screen.blit(high_score_text, (screen.get_width() //
                     2 - high_score_text.get_width() // 2, 260*scaling))
+
+        if not first_run:
+            pygame.draw.rect(screen, (255, 0, 0), start_zone)
+            screen.blit(restart_text, (start_zone.centerx - restart_text.get_width() // 2,
+                                       start_zone.centery - restart_text.get_height() // 2))
 
         pygame.display.update()
 
