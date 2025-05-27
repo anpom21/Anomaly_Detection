@@ -6,3 +6,5 @@ PySide6
 matplotlib
 numpy
 PyYAML
+pyqtgraph
+PyQt6
