@@ -5,21 +5,103 @@ import pygame
 import random
 import sys
 import time
-from Game.read_bpm import start_heart_rate_stream, bpm_data
-import Game.read_bpm
+from read_bpm import start_heart_rate_stream, bpm_data
+import read_bpm
 import yaml
+import math
 import os
+
+from serial_read_MR_together import SerialReaderThread
 
 # ---------------------------------------------------------------------------- #
 #                                   Functions                                  #
 # ---------------------------------------------------------------------------- #
 clock = pygame.time.Clock()
 working_directory = os.path.dirname(os.path.abspath(__file__))
-scaling = 2
+scaling = 1.45
+# Adjust COM port and baudrate as needed
+try:
+    debugging = False
+    thread = SerialReaderThread('COM4', 9600)
+    thread.start()
+except Exception as e:
+    debugging = True
+    print(f"Error starting serial thread: {e}")
+
+min_pos = 181
+max_pos = 214
+
+phase = 0
+period = 0
+sine_val = 0
+start_time = time.time()
+points = None
+pygame.init()
+font_path = os.path.join("Game", "Minecraft.ttf")
+pixel_font = pygame.font.Font(font_path, int(30*scaling))
+
+
+def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH):
+    global debugging, thread, scaling, clock, points, pixel_font, min_pos
+
+    start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
+    bird_velocity = 0
+
+    start = False
+
+    while not start:
+        clock.tick(60)
+        keys = pygame.key.get_pressed()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                print("Stopping...")
+                pygame.quit()
+                thread.kill()  # Ensure thread is stopped and joined
+                del thread  # Ensure thread is deleted
+                sys.exit()
+
+        # Get points from pressure sensor
+        if points is None and not debugging:
+            pressure = thread.get_pressure()
+            if pressure is not None:
+                points = round(pressure * 4)
+            else:
+                print("No pressure data available")
+        # Move bird
+        bird_velocity = update_bird_velocity(bird_velocity, keys)
+        bird_rect.y = read_position(bird_rect)
+
+        # Check for the user pressing 'SPACE' to start
+        if keys[pygame.K_SPACE]:
+            min_pos = thread.get_position()
+            start = True
+
+        # Drawing
+        screen.blit(background_img, (0, 0))
+        screen.blit(drone_img, bird_rect)  # Bird - yellow
+        # Change font size based
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(30*scaling))
+        start_text = pixel_font.render("START", True, (255, 255, 255))
+        line_1 = pixel_font.render(
+            "Extend your legs fully", True, (255, 255, 255))
+        line_2 = pixel_font.render(
+            "and press SPACE to start", True, (255, 255, 255))
+
+        screen.blit(line_1, (WIDTH // 2 - line_1.get_width() // 2,
+                             100*scaling))
+        screen.blit(line_2, (WIDTH // 2 - line_2.get_width() // 2,
+                             100*scaling + 10*scaling + 20*scaling))
+
+        pygame.display.update()
+
+    return bird_rect
 
 
 def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
-    global clock
+    global debugging, thread, scaling, clock, points, pixel_font
+
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
 
@@ -29,12 +111,22 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                print("Stopping...")
                 pygame.quit()
-                # sys.exit()
+                thread.kill()  # Ensure thread is stopped and joined
+                del thread  # Ensure thread is deleted
+                sys.exit()
 
+        # Get points from pressure sensor
+        if points is None and not debugging:
+            pressure = thread.get_pressure()
+            if pressure is not None:
+                points = round(pressure * 4)
+            else:
+                print("No pressure data available")
         # Move bird
         bird_velocity = update_bird_velocity(bird_velocity, keys)
-        bird_rect.y += bird_velocity
+        bird_rect.y = read_position(bird_rect)
 
         # Check for collision with start zone
         if bird_rect.colliderect(start_zone):
@@ -44,14 +136,18 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
         screen.blit(background_img, (0, 0))
         screen.blit(drone_img, bird_rect)  # Bird - yellow
         pygame.draw.rect(screen, (255, 0, 0), start_zone)
-        start_text = font.render("START", True, (255, 255, 255))
+        # Change font size based
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(30*scaling))
+        start_text = pixel_font.render("START", True, (255, 255, 255))
         screen.blit(start_text, (start_zone.centerx - start_text.get_width() // 2,
-                                 start_zone.centery - start_text.get_height() // 2))
+                                 start_zone.centery - start_text.get_height() // 2+3*scaling))
 
         pygame.display.update()
 
 
 def game_over(bird_rect, score, drone_img, screen, font, background_img, background_x, clock):
+    global debugging, thread, scaling, pixel_font
     # Define start zone as restart trigger
     start_zone = pygame.Rect(40*scaling, 150*scaling, 300*scaling, 30*scaling)
 
@@ -83,7 +179,7 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
             yaml.dump(high_score, file)
 
     # Update high score if needed
-    if score > high_score:
+    if score > high_score and not debugging:
         high_score = score
         with open(os.path.join(working_directory, "high_score.yaml"), "w") as file:
             yaml.dump(high_score, file)
@@ -91,17 +187,23 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
     # Game over loop
     first_run = True
     while True:
+        # print("Get position", bird_rect.y)
         clock.tick(60)
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                print("Stopping...")
+
                 pygame.quit()
-                # sys.exit()
+
+                thread.kill()  # Ensure thread is stopped and joined
+                sys.exit()
 
         # Move bird so it can "fly into" start zone to restart
         bird_velocity = update_bird_velocity(bird_velocity, keys)
-        bird_rect.y += bird_velocity
+        bird_rect.y = read_position(bird_rect)
+
         if bird_rect.y > 300 * scaling:
             first_run = False
 
@@ -114,31 +216,35 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
         screen.blit(background_img, (background_x + 587*scaling, 0))
         screen.blit(drone_img, bird_rect)
 
-        font = pygame.font.SysFont(None, int(48*scaling))
-        restart_text = font.render(
-            "Fly Here to Restart", True, (255, 255, 255))
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(30*scaling))
+        # FONTSIZE
+        restart_text = pixel_font.render(
+            "Fly here to Restart", True, (255, 255, 255))
 
         screen.blit(gameover_img, (screen.get_width() //
                     2-186*scaling//2, 10*scaling))
         # --- Score display --- #
-        font = pygame.font.SysFont(None, int(35*scaling))
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        high_score_text = font.render(
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(23*scaling))
+        score_text = pixel_font.render(
+            f"Score: {score}", True, (255, 255, 255))
+        high_score_text = pixel_font.render(
             f"High Score: {high_score}", True, (255, 255, 255))
         screen.blit(score_bacground_img,
                     (screen.get_width() // 2-186*scaling//2, 200*scaling))
 
         # Score
         screen.blit(score_text, (screen.get_width() //
-                    2 - score_text.get_width() // 2, 215*scaling))
+                    2 - score_text.get_width() // 2, 219*scaling))
         # High score
         screen.blit(high_score_text, (screen.get_width() //
-                    2 - high_score_text.get_width() // 2, 260*scaling))
+                    2 - high_score_text.get_width() // 2, 264*scaling))
 
         if not first_run:
             pygame.draw.rect(screen, (255, 0, 0), start_zone)
             screen.blit(restart_text, (start_zone.centerx - restart_text.get_width() // 2,
-                                       start_zone.centery - restart_text.get_height() // 2))
+                                       start_zone.centery - restart_text.get_height() // 2+3*scaling))
 
         pygame.display.update()
 
@@ -163,6 +269,7 @@ def bpm_to_speed(bpm):
 
 
 def update_bird_velocity(velocity, keys, acceleration=0.5, max_speed=6, friction=0.3):
+    velocity = 0
     if keys[pygame.K_UP]:
         velocity -= acceleration
     elif keys[pygame.K_DOWN]:
@@ -176,26 +283,59 @@ def update_bird_velocity(velocity, keys, acceleration=0.5, max_speed=6, friction
     elif velocity < -max_speed:
         velocity = -max_speed
 
+    if keys[pygame.K_UP]:
+        velocity -= 3
+    elif keys[pygame.K_DOWN]:
+        velocity += 3
+    else:
+        velocity = 0
+
     return velocity
 
 
 def read_position(bird_rect):
+    global debugging, thread, scaling, min_pos, max_pos
     # Read the position from the file
-    keys = pygame.key.get_pressed()
-    acceleration = 1*scaling
-    max_speed = 6.5*scaling
-    friction = 10*scaling
-    bird_speed = update_bird_velocity(
-        bird_speed, keys, acceleration, max_speed, friction)
-    bird_position = bird_rect.y + bird_speed
+    bird_max = 565 * scaling
+    bird_min = 0
+    # debugging = True
 
-    return bird_position
+    if debugging:  # debugging:
+        bird_speed = 4
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            bird_speed = -bird_speed
+        elif keys[pygame.K_DOWN]:
+            bird_speed = bird_speed
+        else:
+            bird_speed = 0
+
+        bird_pos = bird_rect.y + bird_speed
+    else:
+        # Read the position from the serial thread
+        bird_pos = thread.get_position()
+        if bird_pos is None:
+            bird_pos = 0
+        # Map the bird_max and bird_min to the min_pos and max_pos
+        bird_pos = (bird_pos - min_pos) / (max_pos - min_pos) * \
+            (bird_max - bird_min) + bird_min
+    return bird_pos
 
 
 # ---------------------------------------------------------------------------- #
 #                                Intialize game                                #
 # ---------------------------------------------------------------------------- #
 def run_game():
+    global debugging, thread, scaling, clock, points, phase, sine_val, pixel_font
+    # Get points from pressure sensor
+
+    if debugging:
+        points = 4
+    elif thread.get_pressure() is not None:
+        points = round(thread.get_pressure() * 4)
+    else:
+        points = None
+    print(f"Points from pressure sensor: {points}")
     # Initialize pygame
     pygame.init()
 
@@ -226,7 +366,8 @@ def run_game():
 
     # Pipe setup
     pipe_width = 60*scaling
-    pipe_gap = 60*scaling
+    pipe_gap = 120*scaling
+    old_pipe_passthroughs = 0
     pipe_height = random.randint(int(150*scaling), int(450*scaling))
     pipe_x = WIDTH
     pipe_speed = 3
@@ -241,12 +382,24 @@ def run_game():
         pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
 
     # Score
-    font = pygame.font.SysFont(None, int(48*scaling))
+    pixel_font = pygame.font.Font(
+        "Game/Minecraft.ttf", int(30*scaling))
     score = 0
 
     # Heart rate
-    font = pygame.font.SysFont(None, int(48*scaling))
+    pixel_font = pygame.font.Font(
+        "Game/Minecraft.ttf", int(30*scaling))
     heart_rate = 60  # Example heart rate
+    # Heart image
+    # Load once
+    heart_orig = pygame.image.load(os.path.join(
+        working_directory, "heart.png")).convert_alpha()
+    w0, h0 = heart_orig.get_size()
+    # Heart position
+    heart_pos = (55, 55)
+    # tuning: how much bigger/smaller (e.g. ±20%)
+    AMP = 0.06
+    start_time = time.time()
 
     # Game loop
     running = True
@@ -258,56 +411,74 @@ def run_game():
     # Start heart rate stream
     start_heart_rate_stream()
 
-    bird_rect = wait_for_start_zone(
-        bird_rect, background_img, drone_img, screen, font)
+    bird_rect = start_menu(
+        bird_rect, background_img, drone_img, screen, pixel_font, HEIGHT, WIDTH)
+    period = 60.0 / max(read_bpm.bpm_data, 1e-2)
 
+    if points is None:
+        print("[ERROR] No points available from pressure sensor. Exiting game.")
+        pygame.quit()
+        thread.kill()
+        sys.exit()
     # ---------------------------------------------------------------------------- #
     #                               Run the game loop                              #
     # ---------------------------------------------------------------------------- #
     while running:
-        clock.tick(60)  # 60 FPS
+
+        dt = clock.tick(60) / 1000.0   # frame time in seconds
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                print("Stopping...")
+
                 pygame.quit()
-                # sys.exit()
+                thread.kill()  # Ensure thread is stopped and joined
+                sys.exit()
 
         # ------------------------------------ Bird ---------------------------------- #
         # Bird movement
         keys = pygame.key.get_pressed()
-        acceleration = 1
-        max_speed = 6.5
-        friction = 10
-        bird_speed = update_bird_velocity(
-            bird_speed, keys, acceleration, max_speed, friction)
+        # acceleration = 1
+        # max_speed = 6.5
+        # friction = 10
+        # bird_speed = update_bird_velocity(
+        #     bird_speed, keys, acceleration, max_speed, friction)
 
-        bird_rect.y += bird_speed
+        bird_rect.y = read_position(bird_rect)
         # ----------------------------------- Pipes ---------------------------------- #
         if first_run:
             pipe_x = WIDTH-pipe_width
+
+        pipe_passthroughs = score // points
+
+        if pipe_passthroughs > old_pipe_passthroughs and pipe_gap > 50*scaling:
+            old_pipe_passthroughs = pipe_passthroughs
+            pipe_gap -= 8*scaling  # Decrease gap by 5 pixels for each point scored
 
         # Adjust pipe speed based on heart rate
         pipe_x -= bpm_to_speed(read_bpm.bpm_data)  # Changed
         if pipe_x < -pipe_width:
             pipe_x = WIDTH
             pipe_height = random.randint(150, 450)
-            score += 1
+            score += points
 
         top_pipe = pygame.Rect(pipe_x, 0, pipe_width, pipe_height)
         bottom_pipe = pygame.Rect(
             pipe_x, pipe_height + pipe_gap, pipe_width, HEIGHT - pipe_height - pipe_gap)
         # ---------------------------- Collision detection --------------------------- #
-        if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= 0 or bird_rect.bottom >= HEIGHT:
+        if bird_rect.colliderect(top_pipe) or bird_rect.colliderect(bottom_pipe) or bird_rect.top <= -HEIGHT or bird_rect.bottom >= HEIGHT:
             print(f"Game Over! Final Score: {score}")
             # Reset game state
             bird_speed = 0
             pipe_x = WIDTH
             bird_rect, background_start_x = game_over(
-                bird_rect, score, drone_img, screen, font, background_img, background_x, clock)
+                bird_rect, score, drone_img, screen, pixel_font, background_img, background_x, clock)
             start_timer = 0
             first_run = True
             score = 0
-            # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, font)
+            pipe_gap = 120*scaling
+
+            # bird_rect = wait_for_start_zone(bird_rect, drone_img, screen, pixel_font)
         # -------------------------------- Background -------------------------------- #
         # Update scroll position
         background_x -= pipe_speed/4 * 1.5  # scroll_speed
@@ -322,7 +493,6 @@ def run_game():
         screen.blit(background_img, (background_x + background_width, 0))
 
         # ---------------------------------- Drawing --------------------------------- #
-
         screen.blit(drone_img, bird_rect)  # Bird - yellow
         # For top laser (positioned based on pipe_height)
         top_laser_y = pipe_height - laser_height
@@ -331,12 +501,35 @@ def run_game():
         # For bottom laser
         bottom_laser_y = pipe_height + pipe_gap
         screen.blit(laser_img, (pipe_x, bottom_laser_y))
+        # ------------------------------- Heart rate -------------------------------- #
+        phase += (2 * math.pi) * (dt / period)
+
+        if sine_val < 0 and math.sin(2*math.pi * t / period) > 0:
+            phase -= 2 * math.pi
+
+            # now read a fresh BPM and update period
+            bpm = read_bpm.bpm_data
+            period = 60.0 / max(bpm, 1e-2)
+        t = (time.time() - start_time) % period
+        sine_val = math.sin(2*math.pi * t / period)
+        scale_factor = 1.0 + AMP * sine_val   # between 1-AMP and 1+AMP
+        print(
+            f"Current BPM: {read_bpm.bpm_data}, Period: {scale_factor}, Sine Value: {sine_val}")
+        new_w = int(w0 * scale_factor)
+        new_h = int(h0 * scale_factor)
+        heart_scaled = pygame.transform.scale(heart_orig, (new_w, new_h))
+        rect = heart_scaled.get_rect(center=heart_pos)
+        screen.blit(heart_scaled, rect)
 
         # ------------------------------- Score display ------------------------------ #
-        score_text = font.render(str(score), True, (255, 255, 255))
-        heart_rate_text = font.render(
-            str(read_bpm.bpm_data), True, (255, 0, 0))  # Changed
-        screen.blit(heart_rate_text, (10, 10))
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(40*scaling))
+        score_text = pixel_font.render(str(score), True, (255, 255, 255))
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(30*scaling))
+        heart_rate_text = pixel_font.render(
+            str(read_bpm.bpm_data), True, (255, 255, 255), )  # Changed
+        screen.blit(heart_rate_text, (33, 35))
         screen.blit(score_text, (WIDTH // 2 -
                     score_text.get_width() // 2, 20*scaling))
 
