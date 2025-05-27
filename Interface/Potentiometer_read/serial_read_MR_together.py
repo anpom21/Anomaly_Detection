@@ -6,6 +6,7 @@ class SerialReaderThread(threading.Thread):
     def __init__(self, comport, baudrate):
         super().__init__()
         self.ser = serial.Serial(comport, baudrate, timeout=0.1)
+        
         self.running = True
         self.pressure = None
         self.last_position = None
@@ -40,8 +41,6 @@ class SerialReaderThread(threading.Thread):
                 velocity = delta_position / delta_time
                 return velocity
         return 0
-
-
 
     def stop(self):
         self.running = False
