@@ -41,6 +41,15 @@ class SerialReaderThread(threading.Thread):
                 velocity = delta_position / delta_time
                 return velocity
         return 0
+    
+    def get_pressure(self):
+        return self.pressure
+    
+    def get_position(self):
+        return self.position
+    
+    def get_time(self):
+        return self.time
 
     def stop(self):
         self.running = False
