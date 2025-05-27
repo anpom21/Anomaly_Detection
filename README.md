@@ -12,5 +12,21 @@ To be able to run this code the following libraries are needed and can be instal
   - pip install PySide6
 - pygame
   - pip install pygame
-- websocket
-  - pip install websocket
+- pyserial
+  - pip install pyserial
+- websocket-client
+  - pip install websocket-client
+- websockets
+  - pip install websockets
+- matplotlib
+  - pip install matplotlib
+- numpy
+  - pip install numpy
+- PyYAML
+  - pip install PyYAML
+- pyqtgraph
+  - pip install pyqtgraph
+- PyQt6
+  - pip install PyQt6
+ 
+  In the folder Rotary_encoder there i a requiremnts.txt that can be run with pip install requirements.txt -r.
