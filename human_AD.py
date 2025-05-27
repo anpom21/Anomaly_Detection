@@ -12,9 +12,10 @@ import sys, select
 from src.Dataloader import Dataloader
 
 dataset_path = 'Datasets/Dataset004'
-# dataset_path = 'Datasets/IRL_4_channel_dataset'
+dataset_path = 'Datasets/IRL_3_channel_dataset'
 dataset = Dataloader(dataset_path)
 train_loader, val_loader, test_loader = dataset.load_train_vali_test_dataloaders_with_n_images(n_images=3, trainSplit=0.8, BS=1)
+test_loader = dataset.load_test_dataloader(3,1,"/Test_Small_defects") 
 
 
 seed = 42
@@ -82,7 +83,7 @@ for idx in test_indices:
 
     human_preds.append(inp if isinstance(inp, int) else int(inp))
     human_truths.append(label if isinstance(label, int) else int(label))
-    clear_output(wait=True)
+    # clear_output(wait=True)
     i += 1
 
 print("Human operator predictions:", human_preds)
