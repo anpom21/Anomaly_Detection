@@ -33,5 +33,13 @@ class DeeperWiderAutoencoder(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
+        #print(f"Encoder output shape: {x.shape}")
         x = self.decoder(x)
         return x
+    
+if __name__ == "__main__":
+    model = DeeperWiderAutoencoder(input_channels=4)
+    print(model)
+    x = torch.randn(1, 4, 224, 224)  # Example input
+    output = model(x)
+    print(output.shape)  # Should be (1, 4, 256, 256)

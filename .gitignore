@@ -10,3 +10,4 @@ figures/
 saved_models/*
 *.xlsx
 *.rar
+*.pyc

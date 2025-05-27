@@ -7,10 +7,10 @@ The other one is a U-Net style autoencoder with skip connections, less pooling, 
 Truely a ChatGPT masterpiece.
 """
 
-class TruelyWiderAutoencoder(nn.Module):
+class SparserDownSampleAutoencoder(nn.Module):
     def __init__(self, input_channels=4, base_ch=256):
         self.channels = input_channels
-        super(TruelyWiderAutoencoder, self).__init__()
+        super(SparserDownSampleAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
             nn.Conv2d(self.channels, base_ch, kernel_size=3, padding=1),  # Wider with more channels
             nn.ReLU(),
