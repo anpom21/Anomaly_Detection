@@ -44,7 +44,7 @@ def Get_Velocity(Thread):
     except Exception as e:
         print(f"Error getting velocity: {e}")
         velocity = 0.0
-        
+
     return velocity
 
 def calculate_psi(resistance_kg):
@@ -328,8 +328,8 @@ class MainWindow(QMainWindow):
         #pressure = calculate_bar(kg)
         pressure2 = Get_Bar()
         try:
-            power = velocity * pressure2
-        except ValueError:1
+            power = abs(velocity * pressure2)
+        except ValueError:
             power = 0.0
 
         self.stats_velocity_data.append(velocity)
