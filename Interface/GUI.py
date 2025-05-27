@@ -103,7 +103,7 @@ class MainWindow(QMainWindow):
         # --- prepare CSV logging ---
         self.csv_file = open('stats_log.csv', 'w', newline='')
         self.csv_writer = csv.writer(self.csv_file)
-        self.csv_writer.writerow(['timestamp', 'velocity_m_s', 'pressure_bar', 'power_W'])
+        self.csv_writer.writerow(['timestamp', 'velocity_m_s', 'pressure_bar', 'power_W', 'position_deg'])
 
         #self.resize(800, 600)
         # Resize to native screen resolution
@@ -355,12 +355,12 @@ class MainWindow(QMainWindow):
 
         # Log to CSV
         timestamp = time.time()
-        self.csv_writer.writerow([timestamp, velocity, pressure2, power])
+        self.csv_writer.writerow([timestamp, velocity, pressure2, power, position])
         self.csv_file.flush()
 
         self.stats_velocity_data.append(velocity)
         self.stats_power_data.append(power)
-        if len(self.stats_velocity_data) > 1800:
+        if len(self.stats_velocity_data) > 6000:
             self.stats_velocity_data.pop(0)
             self.stats_power_data.pop(0)
 
@@ -381,7 +381,7 @@ class MainWindow(QMainWindow):
 
         self.stats_velocity_data.append(velocity)
         self.stats_power_data.append(power)
-        if len(self.stats_velocity_data) > 1800:
+        if len(self.stats_velocity_data) > 100:
             self.stats_velocity_data.pop(0)
             self.stats_power_data.pop(0)
         
