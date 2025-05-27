@@ -23,6 +23,16 @@ from Potentiometer_read.serial_read_MR_together import SerialReaderThread
 
 # Placeholder functions for PSI calculation and BPM reading
 
+def Get_Bar(Thread):
+    try:
+        pressure = Thread.get_pressure()
+    except Exception as e:
+        print(f"Error getting pressure: {e}")
+        pressure = 0.0
+
+    return pressure
+
+
 def Get_Velocity(Thread):
     """
     Placeholder function to get velocity.
@@ -33,7 +43,9 @@ def Get_Velocity(Thread):
         velocity = Thread.get_velocity()
     except Exception as e:
         print(f"Error getting velocity: {e}")
-        return 0.0
+        velocity = 0.0
+        
+    return velocity
 
 def calculate_psi(resistance_kg):
     """
@@ -313,8 +325,12 @@ class MainWindow(QMainWindow):
             kg = float(self.res_input.text())
         except ValueError:
             kg = 0.0
-        force = kg * 9.81
-        power = velocity * force
+        #pressure = calculate_bar(kg)
+        pressure2 = Get_Bar()
+        try:
+            power = velocity * pressure2
+        except ValueError:1
+            power = 0.0
 
         self.stats_velocity_data.append(velocity)
         self.stats_power_data.append(power)
