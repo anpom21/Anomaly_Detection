@@ -5,8 +5,8 @@ import pygame
 import random
 import sys
 import time
-from read_bpm import start_heart_rate_stream, bpm_data
-import read_bpm
+from Game.read_bpm import start_heart_rate_stream, bpm_data
+import Game.read_bpm
 import yaml
 import os
 

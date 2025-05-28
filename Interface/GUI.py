@@ -1,6 +1,8 @@
 import sys
 import os
 import random
+import csv, time
+from matplotlib.ticker import MultipleLocator
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QGuiApplication, QFont
 from PySide6.QtWidgets import (
@@ -23,6 +25,24 @@ from Potentiometer_read.serial_read_MR_together import SerialReaderThread
 
 # Placeholder functions for PSI calculation and BPM reading
 
+def Get_Bar(Thread):
+    try:
+        pressure = Thread.get_pressure()
+    except Exception as e:
+        #print(f"Error getting pressure: {e}")
+        pressure = 0.0
+
+    return pressure
+
+def Get_Position(Thread):
+    try:
+        position = Thread.get_position()
+    except Exception as e:
+        #print(f"Error getting position: {e}")
+        position = 0.0
+
+    return position
+
 def Get_Velocity(Thread):
     """
     Placeholder function to get velocity.
@@ -32,8 +52,10 @@ def Get_Velocity(Thread):
         # Get velocity from the thread
         velocity = Thread.get_velocity()
     except Exception as e:
-        print(f"Error getting velocity: {e}")
-        return 0.0
+        #print(f"Error getting velocity: {e}")
+        velocity = 0.0
+
+    return velocity
 
 def calculate_psi(resistance_kg):
     """
@@ -77,6 +99,12 @@ class MainWindow(QMainWindow):
             self.thread = None
 
         self.setWindowTitle("Resistance-Piston Controller")
+
+        # --- prepare CSV logging ---
+        self.csv_file = open('stats_log.csv', 'w', newline='')
+        self.csv_writer = csv.writer(self.csv_file)
+        self.csv_writer.writerow(['timestamp', 'velocity_m_s', 'pressure_bar', 'power_W', 'position_deg'])
+
         #self.resize(800, 600)
         # Resize to native screen resolution
         screen = QGuiApplication.primaryScreen()
@@ -303,9 +331,38 @@ class MainWindow(QMainWindow):
         layout.addLayout(btns)
 
         # Timer to update stats
-        QTimer(self, timeout=self._update_stats, interval=1000).start()
+        # For .csv file saving
+        QTimer(self, timeout=self._read_stats, interval=10).start()
+        # For displaying
+        #QTimer(self, timeout=self._update_stats, interval=100).start()
 
         self.stats_tab.setLayout(layout)
+
+    def _read_stats(self):
+        velocity = Get_Velocity(self.thread)
+        try:
+            kg = float(self.res_input.text())
+        except ValueError:
+            kg = 0.0
+        #pressure = calculate_bar(kg)
+        pressure2 = Get_Bar(self.thread)
+        try:
+            power = abs(velocity * pressure2)
+        except ValueError:
+            power = 0.0
+
+        position = Get_Position(self.thread)
+
+        # Log to CSV
+        timestamp = time.time()
+        self.csv_writer.writerow([timestamp, velocity, pressure2, power, position])
+        self.csv_file.flush()
+
+        self.stats_velocity_data.append(velocity)
+        self.stats_power_data.append(power)
+        if len(self.stats_velocity_data) > 6000:
+            self.stats_velocity_data.pop(0)
+            self.stats_power_data.pop(0)
 
     def _update_stats(self):
         velocity = Get_Velocity(self.thread)
@@ -313,15 +370,21 @@ class MainWindow(QMainWindow):
             kg = float(self.res_input.text())
         except ValueError:
             kg = 0.0
-        force = kg * 9.81
-        power = velocity * force
+        #pressure = calculate_bar(kg)
+        pressure2 = Get_Bar(self.thread)
+        try:
+            power = abs(velocity * pressure2)
+        except ValueError:
+            power = 0.0
+
+        position = Get_Position(self.thread)
 
         self.stats_velocity_data.append(velocity)
         self.stats_power_data.append(power)
-        if len(self.stats_velocity_data) > 20:
+        if len(self.stats_velocity_data) > 100:
             self.stats_velocity_data.pop(0)
             self.stats_power_data.pop(0)
-
+        
         self.stats_fig.clear()
         ax1 = self.stats_fig.add_subplot(211)
         ax2 = self.stats_fig.add_subplot(212)
@@ -330,8 +393,9 @@ class MainWindow(QMainWindow):
         ax1.set_ylabel("m/s")
         ax2.plot(self.stats_power_data)
         ax2.set_title("Power Output (W)")
-        ax2.set_ylabel("W")
-        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("Power (W)")
+        ax2.set_xlabel("Time (ms)")
+        #ax2.xaxis.set_major_locator(MultipleLocator(10))  # ticks every 10 ms
         self.stats_canvas.draw()
 
     def _reset_stats(self):
