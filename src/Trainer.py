@@ -261,14 +261,27 @@ class Trainer:
                     #     thresholded = np.where(err_map.mean() > threshold, err_map.mean(), 0)
                     pred = 1 if thresholded.max() > 0 else 0  # Anomaly if max value > 0, otherwise normal
                     # plotting
-                    fig, ax = plt.subplots(1, channels + 1, figsize=(15, 5))
-                    for j in range(channels):
-                        ax[j].imshow(images[i][j].cpu().numpy(), cmap='gray')
-                        ax[j].set_title(f"Original Image {j+1}")
-                        ax[j].axis('off')
-                    ax[channels].imshow(thresholded, cmap='hot')
-                    ax[channels].set_title(f"Reconstruction Error (Thresholded)")
-                    ax[channels].axis('off')
+                    fig, ax = plt.subplots(1, 4, figsize=(15, 5))
+                    # for j in range(channels):
+                    #     ax[j].imshow(images[i][j].cpu().numpy(), cmap='gray')
+                    #     ax[j].set_title(f"Original Image {j+1}")
+                    #     ax[j].axis('off')
+                    ax[0].imshow(images[i][1].cpu().numpy(), cmap='gray')
+                    ax[0].set_title(f"Original Image channel [1]")
+                    ax[0].axis('off')
+
+                    ax[1].imshow(outputs[i][1].cpu().numpy(), cmap='gray')
+                    ax[1].set_title(f"Reconstruction Image channel [1]")
+                    ax[1].axis('off')
+
+                    ax[2].imshow(err_map, cmap='hot')
+                    ax[2].set_title(f"Reconstruction error Image")
+                    ax[2].axis('off')
+
+                    ax[3].imshow(thresholded, cmap='hot')
+                    ax[3].set_title(f"Reconstruction Error (Thresholded)")
+                    ax[3].axis('off')
+
                     plt.suptitle(f"Label: {lbl}, Prediction: {pred}", fontsize=16)
                     if FigSavePath:
                         os.makedirs(os.path.dirname(FigSavePath), exist_ok=True)

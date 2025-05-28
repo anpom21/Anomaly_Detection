@@ -9,7 +9,7 @@ from models.Autoencoder import Autoencoder
 from models.DeeperAutoencoder import DeeperAutoencoder
 from models.DeeperWiderAutoencoder import DeeperWiderAutoencoder
 from models.NarrowerAutoencoder import NarrowerAutoencoder
-from models.TruelyWiderAutoecoder import TruelyWiderAutoencoder, HighFreqUNetAE
+from models.TruelyWiderAutoecoder import SparserDownSampleAutoencoder, HighFreqUNetAE
 from models.WiderAutoencoder import WiderAutoencoder
 from models.ResNetAutoencoder import ResNetAutoencoder
 
@@ -53,8 +53,8 @@ if __name__ == "__main__":
             model = DeeperWiderAutoencoder(input_channels=i)
         elif model_name == "NarrowerAutoencoder":
             model = NarrowerAutoencoder(input_channels=i)
-        elif model_name == "TruelyWiderAutoencoder":
-            model = TruelyWiderAutoencoder(input_channels=i, base_ch=128)
+        elif model_name == "SparserDownSampleAutoencoder":
+            model = SparserDownSampleAutoencoder(input_channels=i, base_ch=128)
         elif model_name == "HighFreqUNetAE":
             model = HighFreqUNetAE(in_channels=i, base_ch=128)
         elif model_name == "WiderAutoencoder":

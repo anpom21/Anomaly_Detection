@@ -27,18 +27,18 @@ mpl.rcParams['font.family'] = 'serif'  # LaTeX default font is Computer Modern (
 
 # Create a list of models to test
 models = [
-    # "Autoencoder",
-    # "DeeperAutoencoder",
-    # "DeeperWiderAutoencoder",
-    # "NarrowerAutoencoder",
-    # "WiderAutoencoder",
+    "Autoencoder",
+    "DeeperAutoencoder",
+    "DeeperWiderAutoencoder",
+    "NarrowerAutoencoder",
+    "WiderAutoencoder",
     "ResNetAutoencoder",
-    # "SparserDownSampleAutoencoder",
-    # "HighFreqUNetAE",
+    "SparserDownSampleAutoencoder",
+    "HighFreqUNetAE",
 ]
 
-#light_sources = [1, 2, 3, 4, 8, 12, 16, 20, 24]  # Define the number of light sources to test
-light_sources = [16,17,18,19,20,21,22,23,24]  # Define the number of light sources to test
+light_sources = [1, 2, 3, 4, 8, 12, 16, 20, 24]  # Define the number of light sources to test
+#light_sources = [16,17,18,19,20,21,22,23,24]  # Define the number of light sources to test
 
 if __name__ == "__main__":
     #dataset_path = 'Datasets/Dataset004'
@@ -47,6 +47,8 @@ if __name__ == "__main__":
     display = False
     
     best_model_performance = []
+
+    model_performance = []
 
     for model_name in models:
         thresholds = []
@@ -85,8 +87,8 @@ if __name__ == "__main__":
             # Train the model
             modelName =f"{model_name}_{lights}"
             model_path = f"models/Trained_models/LightTest/LightTestV2/{model_name}_{lights}.pth"
-            if not os.path.exists(model_path):
-                Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/LightTestV2/{model_name}_{lights}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
+            #if not os.path.exists(model_path):
+                # Trainer.train_model(model=model, train_loader=train_loader, val_loader=val_loader, num_epochs=200, lr=0.001, save_path=f"models/Trained_models/LightTest/LightTestV2/{model_name}_{lights}.pth", patience=40, FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
 
             # Prepare for test
             dataset = Dataloader(dataset_path)
@@ -130,6 +132,12 @@ if __name__ == "__main__":
             accuracy, precision, conf_matrix, class_report, ROCThresholds, roc_auc = Trainer.validate(model=model, val_loader=test_loader, threshold=Threshold, thresholdType="maxPix", FigSavePath=Fig_SavePath, ModelName=modelName, display=display)
             accuracys.append(accuracy)
             precisions.append(precision)
+            
+            model_performance.append({
+                "model": model_name,
+                "lightsources": lights,
+                "accuracy": accuracy,
+            })
         
         # Plot the results
         plt.figure(figsize=(10, 5))
@@ -178,4 +186,30 @@ if __name__ == "__main__":
         plt.show()
     else:
         plt.close()
+
+    # Plot 2: All models accuracy vs. number of light sources
+    model_dict = {}
+    for model in model_performance:
+        if model['model'] not in model_dict:
+            model_dict[model['model']] = {'lightsources': [], 'accuracy': []}
+        model_dict[model['model']]['lightsources'].append(model['lightsources'])
+        model_dict[model['model']]['accuracy'].append(model['accuracy'])
+    
+    
+    plt.figure(figsize=(10, 6))
+    for model_name, performance in model_dict.items():
+        plt.plot(performance['lightsources'], performance['accuracy'], marker='o', label=model_name)
+    plt.title('All Model Performance vs Number of Light Sources')
+    plt.xlabel('Number of Light Sources')
+    plt.ylabel('Accuracy')
+    plt.xticks(light_sources)
+    plt.grid()
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"{Fig_SavePath}All_Model_Performance_vs_Number_of_Light_Sources.png")
+    if display:
+        plt.show()
+    else:
+        plt.close()
+
             
