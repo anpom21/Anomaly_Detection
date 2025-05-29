@@ -29,7 +29,7 @@ Dataset:
 - https://www.youtube.com/watch?v=MIxnMC0Zv0Y&list=PLoSULBSCtofdd9Lbp_6uDV0Vqet0afri5&ab_channel=IntelligentMachines
 
 #Models to research:
-- Auteencoder
+- Autoencoder
 - Simplenet
 - Patchcore
 ![paper_tree](https://github.com/user-attachments/assets/f280c43a-8696-4e87-a5ec-ed9d796e3dbf)
