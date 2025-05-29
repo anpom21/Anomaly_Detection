@@ -1,11 +1,4 @@
-# TODO list
-- Finish lighttest.py
-  - Finish Dataloader (train, val, test)
-  - Finsih testFunction
-  - Train new models
-  - Add plot of accuracy/precision
-  - Add training plots
-- Train models with x amount of light from different direction to make mean of accuracy of models. (for all x amount of light models).
+
 
 # Anomaly_Detection
 This project tests a simple anomaly detection network based on an auto encoder network. This will be grounds for the first Anomaly Detection model using photometric lighting.
