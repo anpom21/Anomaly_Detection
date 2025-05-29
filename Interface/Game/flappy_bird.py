@@ -411,8 +411,12 @@ def run_game():
     # Start heart rate stream
     start_heart_rate_stream()
 
-    bird_rect = start_menu(
-        bird_rect, background_img, drone_img, screen, pixel_font, HEIGHT, WIDTH)
+    if debugging:
+        bird_rect = wait_for_start_zone(
+            bird_rect, background_img, drone_img, screen, pixel_font)
+    else:
+        bird_rect = start_menu(
+            bird_rect, background_img, drone_img, screen, pixel_font, HEIGHT, WIDTH)
     period = 60.0 / max(read_bpm.bpm_data, 1e-2)
 
     if points is None:
@@ -513,8 +517,8 @@ def run_game():
         t = (time.time() - start_time) % period
         sine_val = math.sin(2*math.pi * t / period)
         scale_factor = 1.0 + AMP * sine_val   # between 1-AMP and 1+AMP
-        print(
-            f"Current BPM: {read_bpm.bpm_data}, Period: {scale_factor}, Sine Value: {sine_val}")
+        # print(
+        #     f"Current BPM: {read_bpm.bpm_data}, Period: {scale_factor}, Sine Value: {sine_val}")
         new_w = int(w0 * scale_factor)
         new_h = int(h0 * scale_factor)
         heart_scaled = pygame.transform.scale(heart_orig, (new_w, new_h))
