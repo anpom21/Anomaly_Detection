@@ -1,7 +1,8 @@
 import sys
 import os
 import random
-import csv, time
+import csv
+import time
 from matplotlib.ticker import MultipleLocator
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QGuiApplication, QFont
@@ -12,10 +13,9 @@ from PySide6.QtWidgets import (
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import numpy as np
-from Game.flappy_bird import run_game
+from Game.GUI_Game import run_game
 
 # Import our game module
-from Game.Flappy_bird_game import PygameGame
 import Game.read_bpm as read_bpm
 from Game.read_bpm import start_heart_rate_stream
 
@@ -29,33 +29,37 @@ def Get_Bar(Thread):
     try:
         pressure = Thread.get_pressure()
     except Exception as e:
-        #print(f"Error getting pressure: {e}")
+        # print(f"Error getting pressure: {e}")
         pressure = 0.0
 
     return pressure
+
 
 def Get_Position(Thread):
     try:
         position = Thread.get_position()
     except Exception as e:
-        #print(f"Error getting position: {e}")
+        # print(f"Error getting position: {e}")
         position = 0.0
 
     return position
+
 
 def Get_Velocity(Thread):
     """
     Placeholder function to get velocity.
     Replace with actual implementation.
     """
+    print("Get_Velocity called")
     try:
         # Get velocity from the thread
         velocity = Thread.get_velocity()
     except Exception as e:
-        #print(f"Error getting velocity: {e}")
+        # print(f"Error getting velocity: {e}")
         velocity = 0.0
 
     return velocity
+
 
 def calculate_psi(resistance_kg):
     """
@@ -64,26 +68,27 @@ def calculate_psi(resistance_kg):
     """
     try:
         N = resistance_kg * 9.81  # Convert kg to Newtons
-        d = 63.0 # Diameter in mm
-        dm = d / 1000.0 # Diameter in m
-        A = (np.pi * dm**2) / 4 # Area in m^2
-        return N/(A*6894.76) # Convert to psi
-        #return resistance_kg * 14.2233
+        d = 63.0  # Diameter in mm
+        dm = d / 1000.0  # Diameter in m
+        A = (np.pi * dm**2) / 4  # Area in m^2
+        return N/(A*6894.76)  # Convert to psi
+        # return resistance_kg * 14.2233
     except Exception:
         return 0.0
+
 
 def calculate_bar(resistance_kg):
     """
     Convert desired resistance in kg to bar.
     1 kgf/cm^2 ≈ 0.980665 bar.
     """
-    d = 63.0 # Diameter in mm
-    dm = d / 1000.0 # Diameter in m
+    d = 63.0  # Diameter in mm
+    dm = d / 1000.0  # Diameter in m
     try:
-        #return resistance_kg * 14.2233
+        # return resistance_kg * 14.2233
         N = resistance_kg * 9.81  # Convert kg to Newtons
-        A = (np.pi * dm**2) / 4 # Area in m^2
-        return N / (A * 10**5) # Convert to bar
+        A = (np.pi * dm**2) / 4  # Area in m^2
+        return N / (A * 10**5)  # Convert to bar
     except Exception:
         return 0.0
 
@@ -92,7 +97,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         try:
-            self.thread = SerialReaderThread('COM3', 9600)  # Adjust COM port and baud rate as needed
+            # Adjust COM port and baud rate as needed
+            self.thread = SerialReaderThread('COM4', 9600)
             self.thread.start()
         except Exception as e:
             print(f"Error starting serial thread: {e}")
@@ -103,9 +109,10 @@ class MainWindow(QMainWindow):
         # --- prepare CSV logging ---
         self.csv_file = open('stats_log.csv', 'w', newline='')
         self.csv_writer = csv.writer(self.csv_file)
-        self.csv_writer.writerow(['timestamp', 'velocity_m_s', 'pressure_bar', 'power_W', 'position_deg'])
+        self.csv_writer.writerow(
+            ['timestamp', 'velocity_m_s', 'pressure_bar', 'power_W', 'position_deg'])
 
-        #self.resize(800, 600)
+        # self.resize(800, 600)
         # Resize to native screen resolution
         screen = QGuiApplication.primaryScreen()
         rect = screen.availableGeometry()
@@ -241,18 +248,28 @@ class MainWindow(QMainWindow):
         self.bpm_out.clear()
 
     def _setup_plot(self):
-        font = QFont(); font.setPointSize(14)
+        font = QFont()
+        font.setPointSize(14)
         layout = QVBoxLayout()
         self.figure = Figure(figsize=(10, 6))
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas, stretch=4)
 
         # Align label and input on same line
-        row = QHBoxLayout(); row.setAlignment(Qt.AlignCenter); row.setSpacing(10)
-        lbl = QLabel("Current BPM:"); lbl.setFont(font)
-        self.plot_bpm = QLineEdit(); self.plot_bpm.setReadOnly(True)
-        self.plot_bpm.setFont(font); self.plot_bpm.setAlignment(Qt.AlignCenter); self.plot_bpm.setMaximumWidth(200)
-        row.addStretch(1); row.addWidget(lbl); row.addWidget(self.plot_bpm); row.addStretch(1)
+        row = QHBoxLayout()
+        row.setAlignment(Qt.AlignCenter)
+        row.setSpacing(10)
+        lbl = QLabel("Current BPM:")
+        lbl.setFont(font)
+        self.plot_bpm = QLineEdit()
+        self.plot_bpm.setReadOnly(True)
+        self.plot_bpm.setFont(font)
+        self.plot_bpm.setAlignment(Qt.AlignCenter)
+        self.plot_bpm.setMaximumWidth(200)
+        row.addStretch(1)
+        row.addWidget(lbl)
+        row.addWidget(self.plot_bpm)
+        row.addStretch(1)
         layout.addLayout(row)
 
         self.plot_tab.setLayout(layout)
@@ -288,7 +305,7 @@ class MainWindow(QMainWindow):
         ax.set_ylabel("BPM")
         ax.set_xlabel("Seconds")
         self.canvas.draw()
-    
+
     def _reset_plot(self):
         self._plot_data.clear()
         self.figure.clear()
@@ -303,7 +320,8 @@ class MainWindow(QMainWindow):
         self.game_tab.setLayout(layout)
 
     def _setup_stats(self):
-        font = QFont(); font.setPointSize(14)
+        font = QFont()
+        font.setPointSize(14)
         layout = QVBoxLayout()
 
         # Stats plot canvas
@@ -315,7 +333,7 @@ class MainWindow(QMainWindow):
         self.stats_velocity_data = []
         self.stats_power_data = []
 
-         # Buttons on the right, but still centered vertically
+        # Buttons on the right, but still centered vertically
         btns = QHBoxLayout()
         btns.addStretch(1)
         reset = QPushButton("Reset")
@@ -334,17 +352,17 @@ class MainWindow(QMainWindow):
         # For .csv file saving
         QTimer(self, timeout=self._read_stats, interval=10).start()
         # For displaying
-        #QTimer(self, timeout=self._update_stats, interval=100).start()
+        # QTimer(self, timeout=self._update_stats, interval=100).start()
 
         self.stats_tab.setLayout(layout)
 
     def _read_stats(self):
-        velocity = Get_Velocity(self.thread)
+        velocity = 0  # Get_Velocity(self.thread)
         try:
             kg = float(self.res_input.text())
         except ValueError:
             kg = 0.0
-        #pressure = calculate_bar(kg)
+        # pressure = calculate_bar(kg)
         pressure2 = Get_Bar(self.thread)
         try:
             power = abs(velocity * pressure2)
@@ -355,7 +373,8 @@ class MainWindow(QMainWindow):
 
         # Log to CSV
         timestamp = time.time()
-        self.csv_writer.writerow([timestamp, velocity, pressure2, power, position])
+        self.csv_writer.writerow(
+            [timestamp, velocity, pressure2, power, position])
         self.csv_file.flush()
 
         self.stats_velocity_data.append(velocity)
@@ -370,7 +389,7 @@ class MainWindow(QMainWindow):
             kg = float(self.res_input.text())
         except ValueError:
             kg = 0.0
-        #pressure = calculate_bar(kg)
+        # pressure = calculate_bar(kg)
         pressure2 = Get_Bar(self.thread)
         try:
             power = abs(velocity * pressure2)
@@ -384,7 +403,7 @@ class MainWindow(QMainWindow):
         if len(self.stats_velocity_data) > 100:
             self.stats_velocity_data.pop(0)
             self.stats_power_data.pop(0)
-        
+
         self.stats_fig.clear()
         ax1 = self.stats_fig.add_subplot(211)
         ax2 = self.stats_fig.add_subplot(212)
@@ -395,7 +414,7 @@ class MainWindow(QMainWindow):
         ax2.set_title("Power Output (W)")
         ax2.set_ylabel("Power (W)")
         ax2.set_xlabel("Time (ms)")
-        #ax2.xaxis.set_major_locator(MultipleLocator(10))  # ticks every 10 ms
+        # ax2.xaxis.set_major_locator(MultipleLocator(10))  # ticks every 10 ms
         self.stats_canvas.draw()
 
     def _reset_stats(self):
@@ -423,7 +442,7 @@ class MainWindow(QMainWindow):
         # self.game_timer=QTimer(self)
         # self.game_timer.timeout.connect(lambda: self._step_game())
         # self.game_timer.start(33)
-        run_game()
+        run_game(self.thread)
 
     def _step_game(self):
         alive = self.game.step(handle_input=True)
@@ -465,11 +484,11 @@ if __name__ == '__main__':
     }
     QPushButton:hover { background: #000080; }
     """)
-    
+
     # Start heart rate stream
     start_heart_rate_stream()
 
     win = MainWindow()
-    #win.show()
+    # win.show()
     win.showFullScreen()
     sys.exit(app.exec())

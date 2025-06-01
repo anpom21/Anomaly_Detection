@@ -13,6 +13,7 @@ ws_url = f"wss://app.hyperate.io/socket/websocket?token={api_key}&vsn=2.0.0"
 bpm_data = 0  # Initialize bpm_data variable
 initial_bpm = 0  # Initialize initial_bpm variable
 first_run = True  # Initialize first_run variable
+debug = False
 
 
 def on_message(ws, message):
@@ -33,6 +34,7 @@ def on_message(ws, message):
                     bpm_data = bpm  # Update the global BPM variable
                     if first_run:
                         initial_bpm = bpm
+                        print("✅ WebSocket connected")
                         print("❤️ Intial BPM set to:", initial_bpm)
                         first_run = False  # Set first_run to False after receiving the first BPM
             else:
@@ -51,11 +53,17 @@ def on_error(ws, error):
 
 
 def on_close(ws, close_status_code, close_msg):
-    print("🔌 WebSocket closed")
+    if debug:
+        print(
+            f"🔌 WebSocket closed (code: {close_status_code}, message: {close_msg})")
+        print("⏳ Attempting to reconnect in 5 seconds...")
+    time.sleep(5)
+    start_heart_rate_stream()
 
 
 def on_open(ws):
-    print("✅ WebSocket connected")
+    if debug:
+        print("✅ WebSocket connected")
 
     # Now JOIN the heart rate channel
     join_message = [
@@ -67,7 +75,7 @@ def on_open(ws):
     ]
 
     ws.send(json.dumps(join_message))
-    print("📡 Sent join message to heart rate channel")
+    # print("📡 Sent join message to heart rate channel")
 
 
 def start_heart_rate_stream():
@@ -85,17 +93,8 @@ def start_heart_rate_stream():
 
 
 if __name__ == "__main__":
-    ws = websocket.WebSocketApp(
-        ws_url,
-        on_open=on_open,
-        on_message=on_message,
-        on_error=on_error,
-        on_close=on_close
-    )
-
-    ws_thread = threading.Thread(target=ws.run_forever)
-    ws_thread.daemon = True
-    ws_thread.start()
+    ws = start_heart_rate_stream()
+    # Keep the main thread alive to allow WebSocket to run
     print("WebSocket thread started")
     while True:
         try:
