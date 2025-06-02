@@ -52,7 +52,7 @@ def Get_Velocity(Thread):
     """
     try:
         # Get velocity from the thread
-        velocity = Thread.get_velocity()
+        velocity = Thread.get_velocity() * (np.pi / 180) * 0.88 # convert from degrees to m/s
     except Exception as e:
         # print(f"Error getting velocity: {e}")
         velocity = 0.0
