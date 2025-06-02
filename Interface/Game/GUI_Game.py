@@ -26,6 +26,7 @@ min_pos = 181
 max_pos = 214
 
 phase = 0
+initial_bpm = 0
 period = 0
 sine_val = 0
 start_time = time.time()
@@ -36,7 +37,7 @@ pixel_font = pygame.font.Font(font_path, int(30*scaling))
 
 
 def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH, thread):
-    global debugging, scaling, clock, points, pixel_font, min_pos
+    global debugging, scaling, clock, points, pixel_font, min_pos, initial_bpm
 
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
@@ -44,6 +45,7 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
     start = False
 
     while not start:
+        initial_bpm = Game.read_bpm.bpm_data
         clock.tick(60)
         keys = pygame.key.get_pressed()
 
@@ -94,13 +96,14 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
 
 
 def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font, thread):
-    global debugging, scaling, clock, points, pixel_font
+    global debugging, scaling, clock, points, pixel_font, initial_bpm
 
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
 
     while True:
         clock.tick(60)
+        initial_bpm = Game.read_bpm.bpm_data
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
@@ -243,6 +246,7 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
 
 
 def bpm_to_speed(bpm):
+    global initial_bpm
     # Max speed 6.5
     # Default speed 4.0
     # Min speed 3.0
@@ -293,7 +297,7 @@ def read_position(bird_rect, thread):
     bird_min = 0
     # debugging = True
 
-    if True:  # debugging:
+    if debugging:
         bird_speed = 4
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
@@ -331,6 +335,7 @@ def run_game(thread):
     max_pos = 214
 
     phase = 0
+    initial_bpm = 0
     period = 0
     sine_val = 0
     start_time = time.time()

@@ -15,9 +15,9 @@ void loop() {
   double pressure = (pressure_raw / 1023.0) * 5.0;        // 压力 (0–5 bar)
 
   Serial.print("pressure:");
-  Serial.print(pressure, 2);
+  Serial.print(pressure_raw);
   Serial.print(",position:");
-  Serial.println(position, 2);
+  Serial.println(pot_raw);
 
   delay(100);
 }

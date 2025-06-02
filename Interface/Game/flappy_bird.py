@@ -39,10 +39,11 @@ points = None
 pygame.init()
 font_path = os.path.join("Game", "Minecraft.ttf")
 pixel_font = pygame.font.Font(font_path, int(30*scaling))
+initial_bpm = 0
 
 
 def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH):
-    global debugging, thread, scaling, clock, points, pixel_font, min_pos
+    global debugging, thread, scaling, clock, points, pixel_font, min_pos, initial_bpm
 
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
@@ -50,6 +51,7 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
     start = False
 
     while not start:
+        initial_bpm = read_bpm.initial_bpm
         clock.tick(60)
         keys = pygame.key.get_pressed()
 
@@ -67,7 +69,7 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
             if pressure is not None:
                 points = round(pressure * 4)
             else:
-                print("No pressure data available")
+                print("Loading pressure data . . .")
         # Move bird
         bird_velocity = update_bird_velocity(bird_velocity, keys)
         bird_rect.y = read_position(bird_rect)
@@ -100,13 +102,15 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
 
 
 def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
-    global debugging, thread, scaling, clock, points, pixel_font
+    global debugging, thread, scaling, clock, points, pixel_font, initial_bpm
 
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
 
     while True:
         clock.tick(60)
+
+        initial_bpm = read_bpm.initial_bpm
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
@@ -249,12 +253,13 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
 
 
 def bpm_to_speed(bpm):
+    global initial_bpm
     # Max speed 6.5
     # Default speed 4.0
     # Min speed 3.0
 
     speed_scaling = 1
-    delta_bpm = read_bpm.initial_bpm - bpm  # Changed
+    delta_bpm = initial_bpm - bpm  # Changed
     speed = 4.0 + delta_bpm * speed_scaling
 
     # Ensure speed is within bounds

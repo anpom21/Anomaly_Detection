@@ -3,6 +3,13 @@ import threading
 import time
 
 
+def map_value(value, from_low, from_high, to_low, to_high):
+    """
+    Maps a value from one range to another.
+    """
+    return (value - from_low) * (to_high - to_low) / (from_high - from_low) + to_low
+
+
 class SerialReaderThread(threading.Thread):
     def __init__(self, comport, baudrate):
         super().__init__()
@@ -21,12 +28,12 @@ class SerialReaderThread(threading.Thread):
                 line = self.ser.readline().decode().strip()
                 if line.startswith("pressure:"):
                     parts = line.split(",")
-                    raw_pressure = float(parts[0].split(":")[1])  # 原始传感器值 x
-                    self.last_position = self.position
-                    self.position = float(parts[1].split(":")[1])
-
-                    # 使用传感器转换方程计算实际压力值
+                    raw_pressure = float(parts[0].split(":")[1])
                     self.pressure = 0.0119 * raw_pressure - 0.8715
+
+                    self.last_position = self.position
+                    pot_raw = float(parts[1].split(":")[1])
+                    self.position = map_value(pot_raw, 0, 1023, 0, 300)
 
                     self.last_time = self.time
                     self.time = time.time()
@@ -53,12 +60,22 @@ class SerialReaderThread(threading.Thread):
         return self.time
 
     def stop(self):
+        # 1) signal loop exit
         self.running = False
-        self.ser.close()
+        # 2) unblock readline()
+        try:
+            self.ser.close()
+        except Exception:
+            pass
+
+    def kill(self):
+        self.stop()
+        self.join()
+        print("Serial port closed.")
 
 
 if __name__ == "__main__":
-    comport = 'COM3'      # 修改为你的串口
+    comport = 'COM4'      # 修改为你的串口
     baudrate = 9600
     print("Starting serial reader thread...")
 
@@ -70,5 +87,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         print("Stopping...")
-        reader_thread.stop()
-        reader_thread.join()
+        reader_thread.kill()
