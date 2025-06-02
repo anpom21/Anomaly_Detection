@@ -53,7 +53,7 @@ def Get_Velocity(Thread):
     print("Get_Velocity called")
     try:
         # Get velocity from the thread
-        velocity = Thread.get_velocity()
+        velocity = Thread.get_velocity() * (np.pi / 180) * 0.88 # convert from degrees to m/s
     except Exception as e:
         # print(f"Error getting velocity: {e}")
         velocity = 0.0
@@ -350,9 +350,9 @@ class MainWindow(QMainWindow):
 
         # Timer to update stats
         # For .csv file saving
-        QTimer(self, timeout=self._read_stats, interval=10).start()
+        # QTimer(self, timeout=self._read_stats, interval=10).start()
         # For displaying
-        # QTimer(self, timeout=self._update_stats, interval=100).start()
+        QTimer(self, timeout=self._update_stats, interval=100).start()
 
         self.stats_tab.setLayout(layout)
 
