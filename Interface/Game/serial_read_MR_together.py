@@ -1,6 +1,7 @@
 import serial
 import threading
 import time
+import numpy as np
 
 
 def map_value(value, from_low, from_high, to_low, to_high):
@@ -33,11 +34,13 @@ class SerialReaderThread(threading.Thread):
 
                     self.last_position = self.position
                     pot_raw = float(parts[1].split(":")[1])
-                    self.position = map_value(pot_raw, 0, 1023, 0, 300)
+                    self.position = map_value(
+                        pot_raw, 0, 1023, 0, 300) * 0.88 * (np.pi / 180)
 
                     self.last_time = self.time
                     self.time = time.time()
-                    # print(f"Time: {self.time:.2f} | Pressure: {self.pressure:.2f} bar | Position: {self.position:.2f} °")
+                    print(
+                        f"Time: {self.time:.2f} | Pressure: {self.pressure:.2f} bar | Position: {self.position:.2f} °")
             except Exception as e:
                 print("Parse error:", e)
 
@@ -87,5 +90,4 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         print("Stopping...")
-        reader_thread.stop()
-        reader_thread.join()
+        reader_thread.kill()

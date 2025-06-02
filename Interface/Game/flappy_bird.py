@@ -29,7 +29,7 @@ except Exception as e:
     print(f"Error starting serial thread: {e}")
 
 min_pos = 181
-max_pos = 214
+max_pos = 212
 
 phase = 0
 period = 0
@@ -51,7 +51,7 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
     start = False
 
     while not start:
-        initial_bpm = read_bpm.initial_bpm
+        initial_bpm = read_bpm.bpm_data
         clock.tick(60)
         keys = pygame.key.get_pressed()
 
@@ -110,7 +110,7 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font):
     while True:
         clock.tick(60)
 
-        initial_bpm = read_bpm.initial_bpm
+        initial_bpm = read_bpm.bpm_data
         keys = pygame.key.get_pressed()
 
         for event in pygame.event.get():
