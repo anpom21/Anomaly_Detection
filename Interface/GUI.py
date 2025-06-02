@@ -50,7 +50,6 @@ def Get_Velocity(Thread):
     Placeholder function to get velocity.
     Replace with actual implementation.
     """
-    print("Get_Velocity called")
     try:
         # Get velocity from the thread
         velocity = Thread.get_velocity()
@@ -350,9 +349,9 @@ class MainWindow(QMainWindow):
 
         # Timer to update stats
         # For .csv file saving
-        QTimer(self, timeout=self._read_stats, interval=10).start()
+        # QTimer(self, timeout=self._read_stats, interval=10).start()
         # For displaying
-        # QTimer(self, timeout=self._update_stats, interval=100).start()
+        QTimer(self, timeout=self._update_stats, interval=100).start()
 
         self.stats_tab.setLayout(layout)
 
