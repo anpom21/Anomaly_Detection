@@ -19,5 +19,5 @@ void loop() {
   Serial.print(",position:");
   Serial.println(pot_raw);
 
-  delay(100);
+  delay(5);
 }

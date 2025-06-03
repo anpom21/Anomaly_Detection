@@ -23,7 +23,7 @@ scaling = 1.45
 debugging = False  # Set to True for debugging without pressure sensor
 
 min_pos = 181
-max_pos = 214
+max_pos = 206
 
 phase = 0
 initial_bpm = 0
@@ -54,8 +54,6 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
                 print("Stopping...")
                 pygame.quit()
                 thread.kill()  # Ensure thread is stopped and joined
-                del thread  # Ensure thread is deleted
-                sys.exit()
 
         # Get points from pressure sensor
         if points is None and not debugging:
@@ -111,7 +109,6 @@ def wait_for_start_zone(bird_rect, background_img, drone_img, screen, font, thre
                 print("Stopping...")
                 pygame.quit()
                 thread.kill()  # Ensure thread is stopped and joined
-                sys.exit()
 
         # Get points from pressure sensor
         if points is None and not debugging:
@@ -194,7 +191,6 @@ def game_over(bird_rect, score, drone_img, screen, font, background_img, backgro
                 pygame.quit()
 
                 thread.kill()  # Ensure thread is stopped and joined
-                sys.exit()
 
         # Move bird so it can "fly into" start zone to restart
         bird_velocity = update_bird_velocity(bird_velocity, keys)
@@ -439,7 +435,6 @@ def run_game(thread):
         print("[ERROR] No points available from pressure sensor. Exiting game.")
         pygame.quit()
         thread.kill()
-        sys.exit()
     # ---------------------------------------------------------------------------- #
     #                               Run the game loop                              #
     # ---------------------------------------------------------------------------- #
@@ -453,7 +448,6 @@ def run_game(thread):
 
                 pygame.quit()
                 thread.kill()  # Ensure thread is stopped and joined
-                sys.exit()
 
         # ------------------------------------ Bird ---------------------------------- #
         # Bird movement

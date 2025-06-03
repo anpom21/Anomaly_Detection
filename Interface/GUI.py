@@ -50,10 +50,12 @@ def Get_Velocity(Thread):
     Placeholder function to get velocity.
     Replace with actual implementation.
     """
-    print("Get_Velocity called")
     try:
         # Get velocity from the thread
-        velocity = Thread.get_velocity() * (np.pi / 180) * 0.88 # convert from degrees to m/s
+        velocity = Thread.get_velocity()
+        # velocity = (Thread.get_velocity() * (np.pi / 180)
+        #            * 0.88)  # convert from degrees to m/s
+        print(f"Velocity: {velocity:.2f} m/s")
     except Exception as e:
         # print(f"Error getting velocity: {e}")
         velocity = 0.0
@@ -389,10 +391,13 @@ class MainWindow(QMainWindow):
             kg = float(self.res_input.text())
         except ValueError:
             kg = 0.0
-        # pressure = calculate_bar(kg)
+        # pressure = calculate_bar( kg)
         pressure2 = Get_Bar(self.thread)
+        d = 63 / 1000.0  # Diameter in m
+        A = (np.pi * d**2) / 4  # Area in m^2
+        force = pressure2 * A * 10**5
         try:
-            power = abs(velocity * pressure2)
+            power = abs(velocity * force)
         except ValueError:
             power = 0.0
 
