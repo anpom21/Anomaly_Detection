@@ -1,0 +1,34 @@
+                                                                                
+ADS NASTRAN VERSION 19.1.0.27   13:27  06/02/25                                 
+                                                                                
+MAXIMUM TET ELEMENT ASPECT RATIO            =  16.72 ON ELEMENT 16226           
+                                                                                
+MAXIMUM TET ELEMENT FACE SKEW ANGLE      =  89.30 DEGREES ON ELEMENT 4014       
+                                                                                
+TOTAL MASS = 2.088717E-03                                                       
+                                                                                
+MAXIMUM STIFFNESS MATRIX DIAGONAL =  2.9423E+07  AT GRID 29085 COMPONENT 1      
+MINIMUM STIFFNESS MATRIX DIAGONAL =  1.0852E+05  AT GRID 3759  COMPONENT 2      
+                                                                                
+MAXIMUM SINGLE POINT CONSTRAINT FORCE MAGNITUDE  =  4.735269E+04  AT GRID 3322  
+MAXIMUM SINGLE POINT CONSTRAINT MOMENT MAGNITUDE =  0.000000E+00  AT GRID 31712 
+                                                                                
+MAXIMUM DISPLACEMENT MAGNITUDE =  1.773363E+02  AT GRID 3767                    
+MAXIMUM ROTATION MAGNITUDE     =  0.000000E+00  AT GRID 31712                   
+                                                                                
+EPSILON       =  5.381416E-08                                                   
+TOPTTDMAXEPSILON = 5.000000E-01                                                 
+STRAIN ENERGY =  7.934826E+04                                                   
+                                                                                
+MAXIMUM TET ELEMENT PRINCIPAL STRESS =  1.554227E+04  AT ELEMENT 17802          
+MAXIMUM TET ELEMENT SHEAR STRESS     =  9.023272E+03  AT ELEMENT 4860           
+MAXIMUM TET ELEMENT VON MISES STRESS =  1.616573E+04  AT ELEMENT 4860           
+MINIMUM TET ELEMENT PRINCIPAL STRESS = -1.685205E+04  AT ELEMENT 17706          
+                                                                                
+SOLID ELEMENT RELATIVE STRESS ERROR =  1.793278E-01                             
+                                                                                
+MAXIMUM SOLID ELEMENT NORMALIZED STRESS ERROR =  1.793278E-01  AT GRID 3721     
+MINIMUM SOLID ELEMENT NORMALIZED STRESS ERROR =  3.573325E-07  AT GRID 15996    
+                                                                                
+TOTAL CPU TIME = 15.20 SECONDS                                                  
+WALLCLOCK TIME = 86.00 SECONDS                                                  
