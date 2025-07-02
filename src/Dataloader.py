@@ -193,6 +193,7 @@ class Dataloader:
                     labels.append(1)  # Anomaly
 
         return labels
+    
         
         
 if __name__ == '__main__':

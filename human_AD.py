@@ -10,13 +10,15 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import sys, select
 from src.Dataloader import Dataloader
+import pickle
 
 dataset_path = 'Datasets/Dataset004'
-dataset_path = 'Datasets/IRL_3_channel_dataset'
+# dataset_path = 'Datasets/IRL_3_channel_dataset'
 dataset = Dataloader(dataset_path)
 train_loader, val_loader, test_loader = dataset.load_train_vali_test_dataloaders_with_n_images(n_images=3, trainSplit=0.8, BS=1)
-test_loader = dataset.load_test_dataloader(3,1,"/Test_Small_defects") 
-
+with open('test_loader_sim.pkl', 'wb') as f:
+    pickle.dump(test_loader, f)
+# test_loader = dataset.load_test_dataloader(3,1,"/Test_Small_defects") 
 
 seed = 42
 random.seed(seed)
