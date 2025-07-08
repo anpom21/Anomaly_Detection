@@ -5,7 +5,7 @@
 
 import random
 import time
-from IPython.display import clear_output, display
+#rom IPython.display import clear_output, display
 from matplotlib import pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import sys, select

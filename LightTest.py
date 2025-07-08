@@ -32,9 +32,9 @@ models = [
     # "DeeperWiderAutoencoder",
     # "NarrowerAutoencoder",
     # "WiderAutoencoder",
-    "ResNetAutoencoder",
-    # "TruelyWiderAutoencoder",
-    # "HighFreqUNetAE",
+    # "ResNetAutoencoder",
+    "TruelyWiderAutoencoder",
+    "HighFreqUNetAE",
 ]
 
 if __name__ == "__main__":
@@ -46,17 +46,17 @@ if __name__ == "__main__":
     best_model_performance = []
 
     for model_name in models:
-        #i = 0
-        i = 3 
+        i = 0
+        #i = 3 
         thresholds = []
         accuracys = []
         precisions = []
-        #while i <= 24:
-        #    i += 4
-        while i <= 12:
-            i += 1
-            #if i > 24:
-            if i > 12:
+        while i <= 24:
+            i += 4
+        #while i <= 12:
+        #    i += 1
+            if i > 24:
+            #if i > 12:
                 break
             
             print(f"Testing {model_name} with {i} lightsources")
@@ -113,7 +113,7 @@ if __name__ == "__main__":
             elif model_name == "ResNetAutoencoder":
                 model = ResNetAutoencoder(channels=i)
 
-            model.load_state_dict(torch.load(f"models/Trained_models/LightTest/ResNetAutoencoder/{model_name}_{i}.pth"))
+            model.load_state_dict(torch.load(f"models/Trained_models/LightTest/{model_name}_{i}.pth"))
             model.eval()
             print(f"Model {model_name} loaded with {i} lightsources")
 
@@ -129,12 +129,12 @@ if __name__ == "__main__":
         
         # Plot the results
         plt.figure(figsize=(10, 5))
-        #plt.plot(range(4, 25, 4), thresholds, marker='o', label='Threshold')
-        plt.plot(range(4, 13, 1), thresholds, marker='o', label='Threshold')
-        #plt.plot(range(4, 25, 4), accuracys, marker='o', label='Accuracy')
-        plt.plot(range(4, 13, 1), accuracys, marker='o', label='Accuracy')
-        #plt.plot(range(4, 25, 4), precisions, marker='o', label='Precision')
-        plt.plot(range(4, 13, 1), precisions, marker='o', label='Precision')
+        plt.plot(range(4, 25, 4), thresholds, marker='o', label='Threshold')
+        #plt.plot(range(4, 13, 1), thresholds, marker='o', label='Threshold')
+        plt.plot(range(4, 25, 4), accuracys, marker='o', label='Accuracy')
+        #plt.plot(range(4, 13, 1), accuracys, marker='o', label='Accuracy')
+        plt.plot(range(4, 25, 4), precisions, marker='o', label='Precision')
+        #plt.plot(range(4, 13, 1), precisions, marker='o', label='Precision')
         plt.title('Threshold, Accuracy and Precision vs Number of Lightsources')
         plt.xlabel('Number of Lightsources')
         plt.ylabel('Value')

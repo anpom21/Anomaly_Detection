@@ -9,7 +9,7 @@ from models.Autoencoder import Autoencoder
 from models.DeeperAutoencoder import DeeperAutoencoder
 from models.DeeperWiderAutoencoder import DeeperWiderAutoencoder
 from models.NarrowerAutoencoder import NarrowerAutoencoder
-from models.TruelyWiderAutoecoder import TruelyWiderAutoencoder, HighFreqUNetAE
+from models.TruelyWiderAutoecoder import SparserDownSampleAutoencoder, HighFreqUNetAE
 from models.WiderAutoencoder import WiderAutoencoder
 from models.ResNetAutoencoder import ResNetAutoencoder
 
@@ -31,19 +31,19 @@ models = [
     "NarrowerAutoencoder",
     "WiderAutoencoder",
     "ResNetAutoencoder",
-    # "TruelyWiderAutoencoder",
+    # "SparserDownSampleAutoencoder",
     # "HighFreqUNetAE",
 ]
 
 if __name__ == "__main__":
-    dataset_path = 'Datasets/IRL_4_channel_dataset'
-    Fig_SavePath = "RW_Results/IRL_4_channel/"
+    dataset_path = 'Datasets/IRL_3_channel_dataset'
+    Fig_SavePath = "RW_Results/IRL_3_channel/"
     display = False
 
     model_performance = []
 
     for model_name in models:
-        i = 4
+        i = 3
         #i = 3
         # Load the dataset
         dataset = Dataloader(dataset_path)
@@ -58,8 +58,8 @@ if __name__ == "__main__":
             model = DeeperWiderAutoencoder(input_channels=i)
         elif model_name == "NarrowerAutoencoder":
             model = NarrowerAutoencoder(input_channels=i)
-        elif model_name == "TruelyWiderAutoencoder":
-            model = TruelyWiderAutoencoder(input_channels=i, base_ch=128)
+        elif model_name == "SparserDownSampleAutoencoder":
+            model = SparserDownSampleAutoencoder(input_channels=i, base_ch=128)
         elif model_name == "HighFreqUNetAE":
             model = HighFreqUNetAE(in_channels=i, base_ch=128)
         elif model_name == "WiderAutoencoder":
@@ -84,8 +84,8 @@ if __name__ == "__main__":
             model = DeeperWiderAutoencoder(input_channels=i)
         elif model_name == "NarrowerAutoencoder":
             model = NarrowerAutoencoder(input_channels=i)
-        elif model_name == "TruelyWiderAutoencoder":
-            model = TruelyWiderAutoencoder(input_channels=i, base_ch=128)
+        elif model_name == "SparserDownSampleAutoencoder":
+            model = SparserDownSampleAutoencoder(input_channels=i, base_ch=128)
         elif model_name == "HighFreqUNetAE":
             model = HighFreqUNetAE(in_channels=i, base_ch=128)
         elif model_name == "WiderAutoencoder":
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         elif model_name == "ResNetAutoencoder":
             model = ResNetAutoencoder(channels=i)
 
-        model.load_state_dict(torch.load(f"models/Trained_models/RW_Test/IRL_4_channel/{model_name}_{i}.pth"))
+        model.load_state_dict(torch.load(f"models/Trained_models/RW_Test/IRL_3_channel/{model_name}_{i}.pth"))
         model.eval()
         print(f"Model {model_name} loaded with {i} lightsources")
 
@@ -129,3 +129,8 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(Fig_SavePath, "Model_Performance.png"), dpi=300)
     plt.show()
     print("Model performance saved as Model_Performance.png")
+
+    # Print the name of the models and their accuracy
+    for model in model_performance:
+        print(f"Model: {model['Model']}, Accuracy: {model['Accuracy']:.4f}")
+

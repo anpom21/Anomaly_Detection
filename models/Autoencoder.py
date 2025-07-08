@@ -27,5 +27,13 @@ class Autoencoder(nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
+        #print(f"Encoder output shape: {x.shape}")
         x = self.decoder(x)
         return x
+    
+if __name__ == "__main__":
+    model = Autoencoder(input_channels=4)
+    print(model)
+    x = torch.randn(1, 4, 224, 224)
+    y = model(x)
+    print(y.shape)
