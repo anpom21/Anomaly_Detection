@@ -3,6 +3,7 @@
 This code is for the mechanics project were our group has made a leg press.
 The main file in this project is located under the Interface folder, and its the GUI.py file.
 This file runs the GUI for the project and calls all the relevant modules from other folders.
+The game can be ran as a individual file using the file in the Interface/Game folder called flappy_bird.py.
 
 # Dependencies
 
