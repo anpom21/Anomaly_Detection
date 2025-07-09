@@ -16,41 +16,18 @@ from serial_read_MR_together import SerialReaderThread
 # ---------------------------------------------------------------------------- #
 #                                   Functions                                  #
 # ---------------------------------------------------------------------------- #
-clock = pygame.time.Clock()
-working_directory = os.path.dirname(os.path.abspath(__file__))
-scaling = 1.45
-# Adjust COM port and baudrate as needed
-try:
-    debugging = False
-    thread = SerialReaderThread('COM4', 9600)
-    thread.start()
-except Exception as e:
-    debugging = True
-    print(f"Error starting serial thread: {e}")
-
-min_pos = 181
-max_pos = 212
-
-phase = 0
-period = 0
-sine_val = 0
-start_time = time.time()
-points = None
-pygame.init()
-font_path = os.path.join("Game", "Minecraft.ttf")
-pixel_font = pygame.font.Font(font_path, int(30*scaling))
-initial_bpm = 0
 
 
 def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH):
-    global debugging, thread, scaling, clock, points, pixel_font, min_pos, initial_bpm
+    global debugging, thread, scaling, clock, points, pixel_font, min_pos, max_pos, initial_bpm
 
     start_zone = pygame.Rect(40*scaling, 40*scaling, 120*scaling, 30*scaling)
     bird_velocity = 0
 
-    start = False
+    extended = False
+    contracted = False
 
-    while not start:
+    while not extended:
         initial_bpm = read_bpm.bpm_data
         clock.tick(60)
         keys = pygame.key.get_pressed()
@@ -62,6 +39,9 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
                 thread.kill()  # Ensure thread is stopped and joined
                 del thread  # Ensure thread is deleted
                 sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                min_pos = thread.get_position()
+                extended = True
 
         # Get points from pressure sensor
         if points is None and not debugging:
@@ -74,20 +54,61 @@ def start_menu(bird_rect, background_img, drone_img, screen, font, HEIGHT, WIDTH
         bird_velocity = update_bird_velocity(bird_velocity, keys)
         bird_rect.y = read_position(bird_rect)
 
-        # Check for the user pressing 'SPACE' to start
-        if keys[pygame.K_SPACE]:
-            min_pos = thread.get_position()
-            start = True
+        # Drawing
+        screen.blit(background_img, (0, 0))
+        screen.blit(drone_img, bird_rect)  # Bird - yellow
+        # Change font size based
+        pixel_font = pygame.font.Font(
+            "Game/Minecraft.ttf", int(26*scaling))
+        start_text = pixel_font.render("START", True, (255, 255, 255))
+        line_1 = pixel_font.render(
+            "Extend your legs fully", True, (255, 255, 255))
+        line_2 = pixel_font.render(
+            "and press SPACE to continue", True, (255, 255, 255))
+
+        screen.blit(line_1, (WIDTH // 2 - line_1.get_width() // 2,
+                             100*scaling))
+        screen.blit(line_2, (WIDTH // 2 - line_2.get_width() // 2,
+                             100*scaling + 10*scaling + 20*scaling))
+
+        pygame.display.update()
+    while not contracted:
+        initial_bpm = read_bpm.bpm_data
+        clock.tick(60)
+        keys = pygame.key.get_pressed()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                print("Stopping...")
+                pygame.quit()
+                thread.kill()  # Ensure thread is stopped and joined
+                del thread  # Ensure thread is deleted
+                sys.exit()
+            # Check for space key to start the game
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                max_pos = thread.get_position()
+                contracted = True
+
+        # Get points from pressure sensor
+        if points is None and not debugging:
+            pressure = thread.get_pressure()
+            if pressure is not None:
+                points = round(pressure * 4)
+            else:
+                print("Loading pressure data . . .")
+        # Move bird
+        bird_velocity = update_bird_velocity(bird_velocity, keys)
+        bird_rect.y = read_position(bird_rect)
 
         # Drawing
         screen.blit(background_img, (0, 0))
         screen.blit(drone_img, bird_rect)  # Bird - yellow
         # Change font size based
         pixel_font = pygame.font.Font(
-            "Game/Minecraft.ttf", int(30*scaling))
+            "Game/Minecraft.ttf", int(26*scaling))
         start_text = pixel_font.render("START", True, (255, 255, 255))
         line_1 = pixel_font.render(
-            "Extend your legs fully", True, (255, 255, 255))
+            "Contract your legs fully", True, (255, 255, 255))
         line_2 = pixel_font.render(
             "and press SPACE to start", True, (255, 255, 255))
 
@@ -329,6 +350,36 @@ def read_position(bird_rect):
 # ---------------------------------------------------------------------------- #
 #                                Intialize game                                #
 # ---------------------------------------------------------------------------- #
+clock = pygame.time.Clock()
+start_time = time.time()
+points = None
+pygame.init()
+initial_bpm = 0
+
+working_directory = os.path.dirname(os.path.abspath(__file__))
+scaling = 1.45
+# Adjust COM port and baudrate as needed
+try:
+    debugging = False
+    thread = SerialReaderThread('COM4', 9600)
+    thread.start()
+except Exception as e:
+    debugging = True
+    print(f"Error starting serial thread: {e}")
+
+min_pos = 181
+max_pos = 212
+
+# Variables for sine wave calculation (Heart rate occillation)
+phase = 0
+period = 0
+sine_val = 0
+
+
+font_path = os.path.join("Game", "Minecraft.ttf")
+pixel_font = pygame.font.Font(font_path, int(30*scaling))
+
+
 def run_game():
     global debugging, thread, scaling, clock, points, phase, sine_val, pixel_font
     # Get points from pressure sensor
